@@ -1,0 +1,2 @@
+_xclingo_label(alcohol(P,A), @label("% alcohol's level is %", (P,A,)) ) :- A>30, not inprison(P).
+_xclingo_label(drive(P), @label("% has driven", (P,)) ).

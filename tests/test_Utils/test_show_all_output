@@ -1,0 +1,2 @@
+_xclingo_show_trace(sentence(P,A)) :- P=gabriel.
+_xclingo_show_trace(sentence(P, 100)).

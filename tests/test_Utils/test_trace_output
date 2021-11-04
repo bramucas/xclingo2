@@ -1,0 +1,5 @@
+_xclingo_label(id, @label("% has driven drunk", (P,) )).
+punish(P) :- person(P), drive(P), alcohol(P,A), A>30.
+
+_xclingo_label(id, @label("p", (,) )).
+p.
