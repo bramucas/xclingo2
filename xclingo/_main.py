@@ -1,12 +1,9 @@
 from typing import Iterable
-from clingo import Control as ClingoControl, backend
 from clingo import Model, Function, String, Symbol
-import clingo
-from clingo.ast import Program, ProgramBuilder, parse_string, Location, Position
+from clingo.ast import ProgramBuilder, parse_string
 from clingo.control import Control
 from xclingo.explanation import Explanation
 from xclingo.preprocessor import Preprocessor
-from time import time
 
 class Context:
     def label(self, text, tup):
@@ -55,37 +52,6 @@ def from_model(symbols:Iterable[Symbol]):
 
         return {node : table[node] for node in roots}, labels
 
-def from_preorder_to_text(symbols:Iterable[Symbol]):
-    parent_stack = None
-    level_stack = None
-    last_child = None
-    expl_text = "  *\n"
-    for i in range(len(symbols)-1, -1, -1):
-        p, c, lab = symbols[i].arguments
-        # initialises stack
-        if parent_stack is None:
-            parent_stack = [p]
-            level_stack = [1]
-        
-        # check if the current parent is a child of the last element of the stack
-        if p != parent_stack[-1]:
-            if p in parent_stack:
-                p_index = parent_stack.index(p)
-                parent_stack = parent_stack[:p_index+1]
-                level_stack = level_stack[:p_index+1]
-
-            parent_stack.append(p)
-            level_stack.append(level_stack[-1] + 1)
-            expl_text+="\n"
-        
-        if c == last_child:
-            expl_text += ";{label}".format(label=str(lab).strip('"'))
-        else:
-            expl_text+='{branch}{node}'.format(branch=ascii_branch(level_stack[-1]), node=str(lab).strip('"'))
-            last_child = c
-
-    return expl_text
-
 def preorder_iterator(d:dict, labels:dict):
     stack = [iter(d.items())]
     level = 0
@@ -121,10 +87,6 @@ class Explainer():
         self._translated = False
         self._current_model = []
 
-    def _clean_model_atoms(self):
-        for a_id in self._current_model:
-            self._control.assign_external(a_id, False)
-
     def _getExplainerLP(self):
         if hasattr(self, '_explainerLP') == False:
             setattr(self, '_explainerLP', self._loadExplainerLP())
@@ -149,16 +111,9 @@ class Explainer():
                 expl, labels = from_model(expl_model.symbols(shown=True))
                 print(ascii_tree(expl, labels))
 
-    def _retrieve2(self, control, yield_=True):
-        total = 0
-        with control.solve(yield_=yield_) as it:
-            for expl_model in it:
-                print(from_preorder_to_text(expl_model.symbols(shown=True)))
-
     def explain(self, model:Model, yield_=True) -> Iterable[Explanation]:
         control = Control(self._internal_control_arguments)
         
-        t = time()
         if not self._translated:
             for program in self._memory:
                 parse_string(
@@ -179,4 +134,3 @@ class Explainer():
         control.ground([('base', [])], context=Context())
 
         self._retrieve1(control, yield_=yield_)
-        # self._retrieve2(control, yield_=yield_)
