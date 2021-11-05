@@ -1,29 +1,30 @@
 from xclingo import Explainer as Explainer
 from clingo import Control
+from argparse import ArgumentParser, FileType
 import sys
 
+
 def check_options():
-    i_file=1
-    while(sys.argv[i_file].isnumeric()):
-        i_file+=1
-    clingo_n = sys.argv[1] if i_file > 1 else '1'
-    xclingo_n = sys.argv[2] if i_file > 2 else '1'
-    files = sys.argv[i_file:]
-    return clingo_n, xclingo_n, files
+    # Handles arguments of xclingo
+    parser = ArgumentParser(description='Tool for explaining (and debugging) ASP programs', prog='xclingo')
+    # parser.add_argument('--debug-level', type=str, choices=["none", "magic-comments", "translation", "causes"], default="none",
+    #                     help="Points out the debugging level. Default: none.")
+    # parser.add_argument('--auto-tracing', type=str, choices=["none", "facts", "all"], default="none",
+    #                     help="Automatically creates traces for the rules of the program. Default: none.")
+    parser.add_argument('n', default='1', type=str, help="Number of answer sets.")
+    parser.add_argument('nexpl', default='1', type=str, help="Number of explanations for each atom to be explained.")
+    parser.add_argument('infiles', nargs='+', type=FileType('r'), default=sys.stdin, help="ASP program")
+    return parser.parse_args()
 
 def read_files(files):
-    program=""
-    for filepath in files:
-        with open(filepath, "r") as pfile:
-            program += pfile.read()
-    return program
+    return "".join([file.read() for file in files])
 
 def main():
-    clingo_n, xclingo_n, files = check_options()
-    program = read_files(files)
+    args = check_options()
+    program = read_files(args.infiles)
 
-    control = Control([clingo_n])
-    explainer = Explainer([xclingo_n])
+    control = Control([args.n])
+    explainer = Explainer([args.nexpl])
 
     explainer.add('base', [], program)
     control.add("base", [], program)
