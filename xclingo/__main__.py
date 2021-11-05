@@ -9,8 +9,8 @@ def check_options():
     parser = ArgumentParser(description='Tool for explaining (and debugging) ASP programs', prog='xclingo')
     # parser.add_argument('--debug-level', type=str, choices=["none", "magic-comments", "translation", "causes"], default="none",
     #                     help="Points out the debugging level. Default: none.")
-    # parser.add_argument('--auto-tracing', type=str, choices=["none", "facts", "all"], default="none",
-    #                     help="Automatically creates traces for the rules of the program. Default: none.")
+    parser.add_argument('--auto-tracing', type=str, choices=["none", "facts", "all"], default="none",
+                        help="Automatically creates traces for the rules of the program. Default: none.")
     parser.add_argument('n', default='1', type=str, help="Number of answer sets.")
     parser.add_argument('nexpl', default='1', type=str, help="Number of explanations for each atom to be explained.")
     parser.add_argument('infiles', nargs='+', type=FileType('r'), default=sys.stdin, help="ASP program")
@@ -24,7 +24,7 @@ def main():
     program = read_files(args.infiles)
 
     control = Control([args.n])
-    explainer = Explainer([args.nexpl])
+    explainer = Explainer([args.nexpl], auto_trace=args.auto_tracing)
 
     explainer.add('base', [], program)
     control.add("base", [], program)

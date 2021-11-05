@@ -25,20 +25,21 @@ class Context:
 
 class Explainer():
     
-    def __init__(self, internal_control_arguments=['1']):
+    def __init__(self, internal_control_arguments=['1'], auto_trace="none"):
         self._preprocessor = Preprocessor()
         self._memory = []
         
         self._internal_control_arguments = internal_control_arguments
+        self._auto_trace = auto_trace
         self._translated = False
         self._current_model = []
 
-    def _getExplainerLP(self):
+    def _getExplainerLP(self, auto_trace="none"):
         if hasattr(self, '_explainerLP') == False:
-            setattr(self, '_explainerLP', self._loadExplainerLP())
+            setattr(self, '_explainerLP', self._loadExplainerLP(auto_trace))
         return self._explainerLP
 
-    def _loadExplainerLP(self):
+    def _loadExplainerLP(self, auto_trace="none"):
         try:
             import importlib.resources as pkg_resources
         except ImportError:
@@ -46,7 +47,12 @@ class Explainer():
             import importlib_resources as pkg_resources
 
         from . import xclingo_lp  # relative-import the *package* containing the templates
-        return pkg_resources.read_text(xclingo_lp, 'xclingo.lp')
+        program = pkg_resources.read_text(xclingo_lp, 'xclingo.lp')
+        if auto_trace == "all":
+            program += pkg_resources.read_text(xclingo_lp, 'autotrace_all.lp')
+        elif auto_trace == "facts":
+            program += pkg_resources.read_text(xclingo_lp, 'autotrace_facts.lp')
+        return program
 
     def add(self, program_name:str, parameters: Iterable[str], program:str):
         self._memory.append(program)
@@ -69,7 +75,7 @@ class Explainer():
                 )
         with ProgramBuilder(control) as builder:
             parse_string(
-                self._getExplainerLP()+self._preprocessor.get_translation(),
+                self._getExplainerLP(auto_trace=self._auto_trace)+self._preprocessor.get_translation(),
                 lambda ast: builder.add(ast),
             )
         

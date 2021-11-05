@@ -9,20 +9,24 @@ class Explanation:
         for s in symbols:
             parent = str(s.arguments[0])
             child = str(s.arguments[1])
-            # child
             child_item = table.get(child, None)
+            parent_item = table.get(parent, None)
+
             if child_item is None:
                 child_item = ExplanationNode()
                 table[child] = child_item
-            child_item.add_label(str(s.arguments[2]))
-            # parent
-            parent_item = table.get(parent, None)
+                new_child = True
+            else:
+                new_child = False
+            child_item.add_label(str(s.arguments[2]).strip('"'))
+            
             if parent_item is None:
                 e = ExplanationRoot() if parent == 'root' else ExplanationNode()
                 e.add_cause(child_item)
                 table[parent] = e
-            else:
+            elif new_child:
                 parent_item.add_cause(child_item)
+        
         return table['root']
 
     @staticmethod
