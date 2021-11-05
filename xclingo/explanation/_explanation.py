@@ -1,7 +1,29 @@
-from typing import Iterable, Mapping
+from typing import Iterable
 from clingo import Symbol
 
 class Explanation:
+
+    @staticmethod
+    def from_model(symbols:Iterable[Symbol]):
+        table = dict()
+        for s in symbols:
+            parent = str(s.arguments[0])
+            child = str(s.arguments[1])
+            # child
+            child_item = table.get(child, None)
+            if child_item is None:
+                child_item = ExplanationNode()
+                table[child] = child_item
+            child_item.add_label(str(s.arguments[2]))
+            # parent
+            parent_item = table.get(parent, None)
+            if parent_item is None:
+                e = ExplanationRoot() if parent == 'root' else ExplanationNode()
+                e.add_cause(child_item)
+                table[parent] = e
+            else:
+                parent_item.add_cause(child_item)
+        return table['root']
 
     @staticmethod
     def ascii_branch(level):
@@ -9,36 +31,6 @@ class Explanation:
             return "  |" * (level) + "__"
         else:
             return ""
-
-    @staticmethod
-    def from_model(symbols:Iterable[Symbol]):
-        roots = set()
-        table = dict()
-        labels = {'root': '*'}
-        for s in symbols:
-            parent = str(s.arguments[0])
-            child = str(s.arguments[1])
-
-            if child in labels:
-                labels[child].append(str(s.arguments[2]).strip('"'))
-            else:
-                labels[child] = [str(s.arguments[2]).strip('"')]
-
-            child_item = table.get(child, None)
-            if child_item is None:
-                child_item = {}
-                table[child] = child_item
-            else:
-                roots.discard(child)
-            
-            parent_item = table.get(parent, None)
-            if parent_item is None:
-                table[parent] = {child: child_item}
-                roots.add(parent)
-            else:
-                parent_item[child] = child_item
-
-        return {node : table[node] for node in roots}, labels
     
     def preorder_iterator(self):
         stack = [iter([self])]
@@ -75,13 +67,16 @@ class Explanation:
         
         return True
 
+    def add_cause(self, cause):
+        self.causes.append(cause)
+
+    def add_label(self, label):
+        self.labels.append(label)
+
 class ExplanationRoot(Explanation):
 
-    def __init__(self, causes=list()):
-        if not isinstance(causes, list):
-            raise RuntimeError("Parameter causes should be a list.")
-        else:
-            self.causes = causes
+    def __init__(self, causes=None):
+        self.causes = list() if causes is None else causes
 
     def get_node_text(self):
         return "  *"
@@ -97,21 +92,12 @@ class ExplanationNode(Explanation):
     A non-binary tree.
     """
 
-    def __init__(self, label, causes=list()):
-        if isinstance(label, str):
-            self.label = Label(label)
-        elif not isinstance(label, Label):
-            raise RuntimeError("Parameter label has to be a Label object.")
-        else:
-            self.label  = label
-
-        if not isinstance(causes, list):
-            raise RuntimeError("Parameter causes should be a list.")
-        else:
-            self.causes = causes
+    def __init__(self, labels=None, causes=None):
+        self.labels = list() if labels is None else labels
+        self.causes = list() if causes is None else causes
 
     def get_node_text(self):
-        return self.label.replace_values()
+        return ";".join(self.labels)
 
     def _node_equals(self, other):
         if not isinstance(other, ExplanationNode):
@@ -121,19 +107,3 @@ class ExplanationNode(Explanation):
             return False
 
         return True
-
-class Label:
-
-    def __init__(self, text, values=[], placeholder="%"):
-        self.text = text
-        self.values = values
-        self.placeholder = placeholder
-
-    def replace_values(self):
-        processed_label = self.text
-        for v in self.values:
-            processed_label = processed_label.replace(self.placeholder, str(v), 1)
-        return processed_label
-
-    def __str__(self):
-        return self.replace_values()

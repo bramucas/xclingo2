@@ -1,10 +1,6 @@
-from typing import Tuple
-from attr import setters
-from clingo.symbol import Function, Number
+from clingo.symbol import Number
 from ._utils import translate_show_all, translate_trace, translate_trace_all, is_xclingo_label, is_xclingo_show_trace, is_choice_rule, is_label_rule
-from ._xclingo_ast import XClingoAST
 from clingo import ast
-from clingo.ast import Location, Position, parse_string
 
 class Preprocessor:
     def __init__(self):

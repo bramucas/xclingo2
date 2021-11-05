@@ -1,5 +1,5 @@
 from typing import Iterable
-from clingo import Model, Function, String, Symbol
+from clingo import Model, Function, String
 from clingo.ast import ProgramBuilder, parse_string
 from clingo.control import Control
 from xclingo.explanation import Explanation
@@ -22,60 +22,6 @@ class Context:
             for a in body.arguments]
         else:
             return Function('empty', [], True)
-
-def from_model(symbols:Iterable[Symbol]):
-        roots = set()
-        table = dict()
-        labels = {"root": ["  *"]}
-        for s in symbols:
-            parent = str(s.arguments[0])
-            child = str(s.arguments[1])
-
-            if child in labels:
-                labels[child].append(str(s.arguments[2]).strip('"'))
-            else:
-                labels[child] = [str(s.arguments[2]).strip('"')]
-
-            child_item = table.get(child, None)
-            if child_item is None:
-                child_item = {}
-                table[child] = child_item
-            else:
-                roots.discard(child)
-            
-            parent_item = table.get(parent, None)
-            if parent_item is None:
-                table[parent] = {child: child_item}
-                roots.add(parent)
-            else:
-                parent_item[child] = child_item
-
-        return {node : table[node] for node in roots}, labels
-
-def preorder_iterator(d:dict, labels:dict):
-    stack = [iter(d.items())]
-    level = 0
-    while (stack):
-        try:
-            k, v = next(stack[-1])
-            yield (";".join(labels[k]), level)
-            stack.append(iter(v.items()))
-            level += 1
-        except StopIteration:
-            stack.pop()
-            level += -1
-
-def ascii_branch(level):
-        if level > 0:
-            return "  |" * (level) + "__"
-        else:
-            return ""
-
-def ascii_tree(expl_dict, labels):
-        expl = ""
-        for node, level in preorder_iterator(expl_dict, labels):
-            expl += f'{ascii_branch(level)}{node}\n'
-        return expl
 
 class Explainer():
     
@@ -108,8 +54,9 @@ class Explainer():
     def _retrieve1(self, control, yield_=True):
         with control.solve(yield_=yield_) as it:
             for expl_model in it:
-                expl, labels = from_model(expl_model.symbols(shown=True))
-                print(ascii_tree(expl, labels))
+                expl = Explanation.from_model(expl_model.symbols(shown=True))
+                print(expl.ascii_tree())
+
 
     def explain(self, model:Model, yield_=True) -> Iterable[Explanation]:
         control = Control(self._internal_control_arguments)
