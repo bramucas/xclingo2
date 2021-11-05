@@ -9,6 +9,8 @@ def check_options():
     parser = ArgumentParser(description='Tool for explaining (and debugging) ASP programs', prog='xclingo')
     parser.add_argument('--only-translate', action='store_true',
                         help="Prints the internal translation and exits. Default: false.")
+    parser.add_argument('--only-translate-comments', action='store_true',
+                        help="Prints the internal translation and exits. Default: false.")
     parser.add_argument('--auto-tracing', type=str, choices=["none", "facts", "all"], default="none",
                         help="Automatically creates traces for the rules of the program. Default: none.")
     parser.add_argument('n', default='1', type=str, help="Number of answer sets.")
@@ -30,6 +32,11 @@ def translate(program, auto_trace):
 def main():
     args = check_options()
     program = read_files(args.infiles)
+
+    if args.only_translate_comments:
+        from xclingo.preprocessor import Preprocessor
+        print(Preprocessor.translate_comments(program))
+        return 0
 
     if args.only_translate:
         print(translate(program, args.auto_tracing))

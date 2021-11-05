@@ -246,7 +246,11 @@ class Preprocessor:
     def add_to_translation(self, a):
         self._translation+=f'{a}\n'
 
+    def add_comment_to_translation(self, a):
+        self._translation+=f'% {a}\n'
+
     def translate_rule(self, rule_ast):
+        self.add_comment_to_translation(rule_ast)
         if rule_ast.ast_type == ast.ASTType.Rule:
             if is_xclingo_label(rule_ast):
                 if is_label_rule(rule_ast):

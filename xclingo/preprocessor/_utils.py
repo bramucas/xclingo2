@@ -1,4 +1,5 @@
 import re
+from clingo import ast
 
 def translate_trace(program):
     """
@@ -6,13 +7,12 @@ def translate_trace(program):
     @param str program: the program that is intended to be modified.
     @return str:
     """
-    for hit in re.findall("(%!trace_rule \{(\".*\"),?(.*)\}[ ]*[\n ]*(\-?[_a-z][_a-zA-Z]*(?:\((?:[\-a-zA-Z0-9+ \(\)\,\_])+\))?)(?:[ ]*:-[ ]*(.*))?.)", program):
+    for hit in re.findall("(%!trace_rule \{(\".*\")(?:,(.*))?\}[ ]*[\n ]*)", program):
         # 0: original match  1: label text  2: label parameters  3: head of the rule  4: body of the rule
         program = program.replace(
             hit[0],
-            "{name}(id, @label({text}, ({parameters},) )).\n{head}{body}.".format(
-                head=hit[3], text=hit[1], parameters=hit[2] if hit[2] else "",
-                body=" :- " + hit[4] if hit[4] else "",
+            "{name}(id, @label({text}, ({parameters},) )).\n".format(
+                text=hit[1], parameters=hit[2] if hit[2] else "",
                 name="_xclingo_label"
             )
         )
@@ -63,12 +63,15 @@ def translate_show_all(program):
     return program
 
 def is_xclingo_label(rule_ast):
-    return rule_ast.head.atom.symbol.name == "_xclingo_label"
+    return rule_ast.head.atom.symbol.ast_type == ast.ASTType.Function \
+        and rule_ast.head.atom.symbol.name == "_xclingo_label"
 
 def is_xclingo_show_trace(rule_ast):
-    return rule_ast.head.atom.symbol.name == "_xclingo_show_trace"
+    return rule_ast.head.atom.symbol.ast_type == ast.ASTType.Function \
+        and rule_ast.head.atom.symbol.name == "_xclingo_show_trace"
 
 def is_label_rule(rule_ast):
+    # Precondition: is_xclingo_label(rule_ast) == True
     return str(rule_ast.head.atom.symbol.arguments[0]) == "id"
 
 def is_choice_rule(rule_ast):
