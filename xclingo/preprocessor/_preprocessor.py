@@ -244,7 +244,7 @@ class Preprocessor:
         return rule
 
     def add_to_translation(self, a):
-        self._translation+=str(a)
+        self._translation+=f'{a}\n'
 
     def translate_rule(self, rule_ast):
         if rule_ast.ast_type == ast.ASTType.Rule:

@@ -57,6 +57,13 @@ class Explainer():
     def add(self, program_name:str, parameters: Iterable[str], program:str):
         self._memory.append(program)
 
+    def _translate_program(self):
+        for program in self._memory:
+                parse_string(
+                    Preprocessor.translate_comments(program), 
+                    lambda ast: self._preprocessor.translate_rule(ast),
+                )
+
     def _retrieve1(self, control, yield_=True):
         with control.solve(yield_=yield_) as it:
             for expl_model in it:
@@ -68,11 +75,8 @@ class Explainer():
         control = Control(self._internal_control_arguments)
         
         if not self._translated:
-            for program in self._memory:
-                parse_string(
-                    Preprocessor.translate_comments(program), 
-                    lambda ast: self._preprocessor.translate_rule(ast),
-                )
+            self._translate_program()
+            
         with ProgramBuilder(control) as builder:
             parse_string(
                 self._getExplainerLP(auto_trace=self._auto_trace)+self._preprocessor.get_translation(),
