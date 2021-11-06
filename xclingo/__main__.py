@@ -67,7 +67,12 @@ def main():
         return 0
 
     control = Control([args.n])
-    explainer = Explainer([args.nexpl], auto_trace=args.auto_tracing)
+    explainer = Explainer(
+        [
+            args.nexpl, 
+        ], 
+        auto_trace=args.auto_tracing
+    )
 
     explainer.add('base', [], program)
     control.add("base", [], program)

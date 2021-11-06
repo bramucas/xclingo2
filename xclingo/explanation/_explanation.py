@@ -15,16 +15,14 @@ class Explanation:
             if child_item is None:
                 child_item = ExplanationNode()
                 table[child] = child_item
-                new_child = True
-            else:
-                new_child = False
             child_item.add_label(str(s.arguments[2]).strip('"'))
             
             if parent_item is None:
-                e = ExplanationRoot(explanation_atoms=symbols) if parent == 'root' else ExplanationNode()
-                e.add_cause(child_item)
-                table[parent] = e
-            elif new_child:
+                parent_item = ExplanationRoot(explanation_atoms=symbols) if parent == 'root' else ExplanationNode()
+                parent_item.add_cause(child_item)
+                table[parent] = parent_item
+            
+            if child_item not in parent_item.causes:
                 parent_item.add_cause(child_item)
         
         return table['root']

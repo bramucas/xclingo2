@@ -29,7 +29,7 @@ class Explainer():
         self._preprocessor = Preprocessor()
         self._memory = []
         
-        self._internal_control_arguments = internal_control_arguments
+        self._internal_control_arguments = internal_control_arguments 
         self._auto_trace = auto_trace
         self._translated = False
         self._current_model = []
@@ -56,6 +56,9 @@ class Explainer():
 
     def add(self, program_name:str, parameters: Iterable[str], program:str):
         self._memory.append(program)
+
+    def initialize_control(self):
+        return Control(self._internal_control_arguments)
 
     def _translate_program(self):
         for program in self._memory:
