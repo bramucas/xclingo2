@@ -31,20 +31,20 @@ def translate(program, auto_trace):
     translation += explainer._getExplainerLP(auto_trace=auto_trace)
     return translation   
 
-def print_explanation_atoms(control, explainer):
+def print_explanation_atoms(control, explainer: Explainer):
     nanswer=1
     with control.solve(yield_=True) as it:
         print(f'Answer {nanswer}')
         for m in it:
             nexpl=1
-            for e in explainer.explain(m):
+            for xclingo_m in explainer.get_xclingo_models(m):
                 print(f'Explanation: {nexpl}')
-                print("\n".join([str(atom) for atom in e._explanation_atoms]))
+                print("\n".join([str(sym) for sym in xclingo_m.symbols(shown=True)]))
                 print()
                 nexpl+=1
         nanswer+=1
 
-def print_text_explanations(control, explainer):
+def print_text_explanations(control, explainer:Explainer):
     nanswer=1
     with control.solve(yield_=True) as it:
         print(f'Answer {nanswer}')

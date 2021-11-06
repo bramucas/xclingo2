@@ -85,11 +85,16 @@ class Explainer():
         with control.solve(yield_=True) as it:
             for expl_model in it:
                 yield Explanation.from_model(expl_model.symbols(shown=True))
+    
+    def _get_models(self, control):
+        with control.solve(yield_=True) as it:
+            for expl_model in it:
+                yield expl_model
 
     def get_xclingo_models(self, model:Model) -> Iterable[Explanation]:
         control = Control(self._internal_control_arguments)        
         self._ground(control, model)
-        return self._get_explanations(control)
+        return self._get_models(control)
 
     def explain(self, model:Model) -> Iterable[Explanation]:
         control = Control(self._internal_control_arguments)        
