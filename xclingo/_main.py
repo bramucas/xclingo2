@@ -64,11 +64,6 @@ class Explainer():
                     lambda ast: self._preprocessor.translate_rule(ast),
                 )
 
-    def _retrieve1(self, control):
-        with control.solve(yield_=True) as it:
-            for expl_model in it:
-                yield Explanation.from_model(expl_model.symbols(shown=True))
-
     def _ground(self, control, model):
         if not self._translated:
             self._translate_program()
@@ -86,10 +81,17 @@ class Explainer():
             
         control.ground([('base', [])], context=Context())
 
-    def explain(self, model:Model) -> Iterable[Explanation]:
-        control = Control(self._internal_control_arguments)
-        
-        self._ground(control, model)
-        
+    def _get_explanations(self, control):
+        with control.solve(yield_=True) as it:
+            for expl_model in it:
+                yield Explanation.from_model(expl_model.symbols(shown=True))
 
-        return self._retrieve1(control)
+    def get_xclingo_models(self, model:Model) -> Iterable[Explanation]:
+        control = Control(self._internal_control_arguments)        
+        self._ground(control, model)
+        return self._get_explanations(control)
+
+    def explain(self, model:Model) -> Iterable[Explanation]:
+        control = Control(self._internal_control_arguments)        
+        self._ground(control, model)
+        return self._get_explanations(control)
