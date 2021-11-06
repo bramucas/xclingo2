@@ -11,6 +11,8 @@ def check_options():
                         help="Prints the internal translation and exits. Default: false.")
     parser.add_argument('--only-translate-comments', action='store_true',
                         help="Prints the internal translation and exits. Default: false.")
+    parser.add_argument('--only-explanation-atoms', action='store_true',
+                        help="Prints the atoms used by the explainer to build the explanations. Default: false.")
     parser.add_argument('--auto-tracing', type=str, choices=["none", "facts", "all"], default="none",
                         help="Automatically creates traces for the rules of the program. Default: none.")
     parser.add_argument('n', default='1', type=str, help="Number of answer sets.")
@@ -28,6 +30,28 @@ def translate(program, auto_trace):
     translation =  explainer._preprocessor.get_translation()
     translation += explainer._getExplainerLP(auto_trace=auto_trace)
     return translation   
+
+def print_explanation_atoms(control, explainer):
+    nanswer=1
+    with control.solve(yield_=True) as it:
+        print(f'Answer {nanswer}')
+        for m in it:
+            nexpl=1
+            for e in explainer.explain(m):
+                print(f'Explanation: {nexpl}')
+                print("\n".join([str(atom) for atom in e._explanation_atoms]))
+                print()
+                nexpl+=1
+        nanswer+=1
+
+def print_text_explanations(control, explainer):
+    nanswer=1
+    with control.solve(yield_=True) as it:
+        print(f'Answer {nanswer}')
+        for m in it:
+            for e in explainer.explain(m):
+                print(e.ascii_tree())
+        nanswer+=1
 
 def main():
     args = check_options()
@@ -49,12 +73,10 @@ def main():
     control.add("base", [], program)
     control.ground([("base", [])])
 
-    nanswer=1
-    with control.solve(yield_=True) as it:
-        print(f'Answer {nanswer}')
-        for m in it:
-            explainer.explain(m)
-        nanswer+=1
+    if args.only_explanation_atoms:
+        print_explanation_atoms(control, explainer)
+    else:
+        print_text_explanations(control, explainer)    
 
 if __name__ == '__main__':
     main()

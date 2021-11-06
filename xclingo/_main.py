@@ -64,16 +64,12 @@ class Explainer():
                     lambda ast: self._preprocessor.translate_rule(ast),
                 )
 
-    def _retrieve1(self, control, yield_=True):
-        with control.solve(yield_=yield_) as it:
+    def _retrieve1(self, control):
+        with control.solve(yield_=True) as it:
             for expl_model in it:
-                expl = Explanation.from_model(expl_model.symbols(shown=True))
-                print(expl.ascii_tree())
+                yield Explanation.from_model(expl_model.symbols(shown=True))
 
-
-    def explain(self, model:Model, yield_=True) -> Iterable[Explanation]:
-        control = Control(self._internal_control_arguments)
-        
+    def _ground(self, control, model):
         if not self._translated:
             self._translate_program()
             
@@ -90,4 +86,10 @@ class Explainer():
             
         control.ground([('base', [])], context=Context())
 
-        self._retrieve1(control, yield_=yield_)
+    def explain(self, model:Model) -> Iterable[Explanation]:
+        control = Control(self._internal_control_arguments)
+        
+        self._ground(control, model)
+        
+
+        return self._retrieve1(control)

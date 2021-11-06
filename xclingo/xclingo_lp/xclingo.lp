@@ -19,14 +19,19 @@ _xclingo_child(Caused, Cause) :- _xclingo_inbody((Cause, Body)), _xclingo_f(_, C
 _xclingo_intree(X;Y) :- _xclingo_child(X,Y).
 
 % Label tree
-_xclingo_skip(X, Y) :- _xclingo_child(X, Y), not _xclingo_label(X, _), X!=root.
+_xclingo_marked(X) :- _xclingo_label(X, _).
+_xclingo_marked(root).
+%
+_xclingo_skip(X, Y) :- _xclingo_child(X, Y), not _xclingo_label(X, _).
 _xclingo_skip(X, Y) :- _xclingo_child(X, Y), not _xclingo_label(Y, _).
 %
 _xclingo_reach(X, Z) :- _xclingo_skip(X, Z).
-_xclingo_reach(X, Z) :- _xclingo_skip(X, Y), _xclingo_reach(Y, Z).
+_xclingo_reach(X, Z) :- _xclingo_reach(X, Y), _xclingo_skip(Y, Z), not _xclingo_marked(Y).
 %
-_xclingo_label_tree(X, Y, Label) :- _xclingo_child(X, Y), not _xclingo_skip(X, Y), _xclingo_label(Y, Label).
-_xclingo_label_tree(X, Y, Label) :- _xclingo_reach(X,Y), _xclingo_label(Y, Label), _xclingo_label(X, _).
+_xclingo_tree(P, C) :- _xclingo_child(P, C), not _xclingo_skip(P, C).
+_xclingo_tree(P, C) :- _xclingo_reach(P, C), _xclingo_marked(P), _xclingo_marked(C).
+%
+_xclingo_label_tree(X, Y, Label) :- _xclingo_tree(X, Y), _xclingo_label(Y, Label).
 
 
 % Necesitamos todo?

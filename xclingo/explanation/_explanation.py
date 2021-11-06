@@ -21,7 +21,7 @@ class Explanation:
             child_item.add_label(str(s.arguments[2]).strip('"'))
             
             if parent_item is None:
-                e = ExplanationRoot() if parent == 'root' else ExplanationNode()
+                e = ExplanationRoot(explanation_atoms=symbols) if parent == 'root' else ExplanationNode()
                 e.add_cause(child_item)
                 table[parent] = e
             elif new_child:
@@ -79,8 +79,9 @@ class Explanation:
 
 class ExplanationRoot(Explanation):
 
-    def __init__(self, causes=None):
+    def __init__(self, causes=None, explanation_atoms=None):
         self.causes = list() if causes is None else causes
+        self._explanation_atoms = explanation_atoms
 
     def get_node_text(self):
         return "  *"
