@@ -15,7 +15,7 @@ _xclingo_f_atom(Atom) :- _xclingo_f(_, Atom, _).
 
 % Atom tree
 _xclingo_child(root, ToExplainAtom) :- _xclingo_f(_, ToExplainAtom, _), _xclingo_to_explain(ToExplainAtom).
-_xclingo_child(Caused, Cause) :- _xclingo_inbody((Cause, Body)), _xclingo_f(_, Caused, Body), _xclingo_child(_, Caused).
+_xclingo_child(Caused, Cause) :- not _xclingo_muted(Cause), _xclingo_inbody((Cause, Body)), _xclingo_f(_, Caused, Body), _xclingo_child(_, Caused).
 _xclingo_intree(X;Y) :- _xclingo_child(X,Y).
 
 % Label tree
@@ -33,12 +33,9 @@ _xclingo_tree(P, C) :- _xclingo_reach(P, C), _xclingo_marked(P), _xclingo_marked
 %
 _xclingo_label_tree(X, Y, Label) :- _xclingo_tree(X, Y), _xclingo_label(Y, Label).
 
-
 % Necesitamos todo?
 % cause(IDCause, ToExplainAtom, root, root) :- f(IDCause, ToExplainAtom, _), to_explain(ToExplainAtom).
 % cause(IDCause, Cause, Caused, IDCaused) :- f(IDCause, Cause, _), inbody((Cause, Body)), f(IDCaused, Caused, Body).
 % cause(true, true,  Caused, ID) :- f(ID, Caused, empty).
 
-% #show _xclingo_to_explain/1.
 #show _xclingo_label_tree/3.
-

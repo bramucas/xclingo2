@@ -1,5 +1,6 @@
 from clingo.symbol import Number
-from ._utils import translate_show_all, translate_trace, translate_trace_all, is_xclingo_label, is_xclingo_show_trace, is_choice_rule, is_label_rule
+from ._utils import translate_show_all, translate_trace, translate_trace_all, translate_mute, \
+    is_xclingo_label, is_xclingo_show_trace, is_choice_rule, is_label_rule, is_xclingo_mute
 from clingo import ast
 
 class Preprocessor:
@@ -17,18 +18,13 @@ class Preprocessor:
     def translate_comments(program):
         return translate_trace_all(
             translate_show_all(
-                translate_trace(program)
+                translate_trace(
+                    translate_mute(
+                        program
+                    )
+                )
             )
         )
-
-    def is_xclingo_label(self, rule_ast):
-        return rule_ast['head'].get_function()['name'] == "_xclingo_label"
-
-    def is_xclingo_show_trace(self, rule_ast):
-        return rule_ast['head'].get_function()['name'] == "_xclingo_show_trace"
-
-    def is_choice_rule(self, rule_ast):
-        return False
 
     def propagates(self, lit_list):
         for lit in lit_list:
@@ -243,6 +239,19 @@ class Preprocessor:
         rule = ast.Rule(loc, rule_ast.head, list(self.sup_body([literal_head] + list(rule_ast.body))))
         return rule
 
+    def mute(self, rule_ast):
+        loc = ast.Location(
+            ast.Position('', 0, 0),
+            ast.Position('', 0, 0),
+        )
+        literal_head = ast.Literal(
+            loc,
+            ast.Sign.NoSign,
+            ast.SymbolicAtom(rule_ast.head.atom.symbol.arguments[0]),
+        )
+        rule = ast.Rule(loc, rule_ast.head, list(self.sup_body([literal_head] + list(rule_ast.body))))
+        return rule
+
     def add_to_translation(self, a):
         self._translation+=f'{a}\n'
 
@@ -260,6 +269,8 @@ class Preprocessor:
             elif is_xclingo_show_trace(rule_ast):
                 self.add_to_translation(self.show_trace(rule_ast))
                 pass
+            elif is_xclingo_mute(rule_ast):
+                self.add_to_translation(self.mute(rule_ast))
             elif is_choice_rule(rule_ast):
                 raise NotImplementedError
             else:  # Other cases

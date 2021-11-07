@@ -62,6 +62,26 @@ def translate_show_all(program):
 
     return program
 
+def translate_mute(program):
+    """
+    Replaces 'explain' magic comments in the given program for a rule version of those magic comments.
+    @param str program:
+    @return:
+    """
+    for hit in re.findall("(%!mute ((\-)?([_a-z][_a-zA-Z]*(?:\((?:[\-a-zA-Z0-9 \(\)\,\_])+\))?)(?:[ ]*:[ ]*(.*))?\.))", program):
+        # 0: original match  1: rule  2: negative_sign  3: head of the rule  4: body of the rule
+        program = program.replace(
+            hit[0],
+            "{name}({classic_negation}{head}){body}.".format(
+                sign="" if not hit[2] else "n",
+                name="_xclingo_muted",
+                head=hit[3],
+                classic_negation="" if not hit[2] else "-",
+                body=" :- " + hit[4] if hit[4] else "")
+        )
+
+    return program
+
 def is_xclingo_label(rule_ast):
     return rule_ast.head.atom.symbol.ast_type == ast.ASTType.Function \
         and rule_ast.head.atom.symbol.name == "_xclingo_label"
@@ -69,6 +89,10 @@ def is_xclingo_label(rule_ast):
 def is_xclingo_show_trace(rule_ast):
     return rule_ast.head.atom.symbol.ast_type == ast.ASTType.Function \
         and rule_ast.head.atom.symbol.name == "_xclingo_show_trace"
+
+def is_xclingo_mute(rule_ast):
+    return rule_ast.head.atom.symbol.ast_type == ast.ASTType.Function \
+            and rule_ast.head.atom.symbol.name == "_xclingo_muted"
 
 def is_label_rule(rule_ast):
     # Precondition: is_xclingo_label(rule_ast) == True
