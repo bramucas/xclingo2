@@ -3,7 +3,6 @@ from clingo import Control
 from argparse import ArgumentParser, FileType
 import sys
 
-
 def check_options():
     # Handles arguments of xclingo
     parser = ArgumentParser(description='Tool for explaining (and debugging) ASP programs', prog='xclingo')
@@ -36,6 +35,7 @@ def print_explanation_atoms(control, explainer: Explainer):
         nanswer=1
         for m in it:
             print(f'Answer {nanswer}')
+            print(' '.join([str(sym) for sym in m.symbols(shown=True)]))
             nexpl=1
             for xclingo_m in explainer.get_xclingo_models(m):
                 print(f'Explanation: {nexpl}')

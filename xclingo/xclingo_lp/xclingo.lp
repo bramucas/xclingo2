@@ -1,3 +1,4 @@
+%%%%%%%%%%%%%% xclingo.lp %%%%%%%%%%%%%%%%%
 % TODO: tuples
 _xclingo_inbody(@inbody(Body)) :- _xclingo_sup(_, _, Body).
 
@@ -10,7 +11,7 @@ _xclingo_relevant(R) :- _xclingo_inbody((R, Body)), _xclingo_sup(_, Atom, Body),
 %%%%%%%%%%%%%%%%%%%%%
 
 % Generates explanations.
-1{_xclingo_f(ID, Atom, Body) : _xclingo_fbody(ID, Atom, Body)}1 :- _xclingo_relevant(Atom).
+1{_xclingo_f(RuleID, Atom, Body) : _xclingo_fbody(RuleID, Atom, Body)}1 :- _xclingo_relevant(Atom).
 _xclingo_f_atom(Atom) :- _xclingo_f(_, Atom, _).
 
 % Atom tree
