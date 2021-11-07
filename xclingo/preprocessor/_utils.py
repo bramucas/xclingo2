@@ -26,7 +26,7 @@ def translate_trace_all(program):
     @param str program: the program that is intended to be modified
     @return str:
     """
-    for hit in re.findall("(%!trace \{(\".*\"),(.*)\} (\-?[_a-z][_a-zA-Z]*(?:\((?:[\-\+a-zA-Z0-9 \(\)\,\_])+\))?)(?:[ ]*:[ ]*(.*))?\.)", program):
+    for hit in re.findall("(%!trace \{(\".*\")(?:,(.*))?\} (\-?[_a-z][_a-zA-Z]*(?:\((?:[\-\+a-zA-Z0-9 \(\)\,\_])+\))?)(?:[ ]*:[ ]*(.*))?\.)", program):
         # 0: original match 1: "label" 2:v1,v2  3: head  4: body.
         program = program.replace(
             hit[0],
