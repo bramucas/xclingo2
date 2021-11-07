@@ -271,16 +271,30 @@ class Preprocessor:
                 pass
             elif is_xclingo_mute(rule_ast):
                 self.add_to_translation(self.mute(rule_ast))
-            elif is_choice_rule(rule_ast):
-                raise NotImplementedError
-            else:  # Other cases
+            else:
                 rule_id = self.increment_rule_count()
-    
-                self.add_to_translation(self.support_rule(rule_id, rule_ast))
-                self.add_to_translation(self.fbody_rule(rule_id, rule_ast))
-                if self._last_trace_rule is not None:
-                    self.add_to_translation(self.label_rule(rule_id, self._last_trace_rule, rule_ast.body))
-                    self._last_trace_rule = None
-    
+                if is_choice_rule(rule_ast):
+                    for cond_lit in rule_ast.head.elements:
+                        false_rule = ast.Rule(
+                            ast.Location(
+                                ast.Position('',0,0),
+                                ast.Position('',0,0),
+                            ),
+                            cond_lit.literal,
+                            list(cond_lit.condition) + list(rule_ast.body),
+                        )
+                        self.add_to_translation(self.support_rule(rule_id, false_rule))
+                        self.add_to_translation(self.fbody_rule(rule_id, false_rule))
+                        if self._last_trace_rule is not None:
+                            self.add_to_translation(self.label_rule(rule_id, self._last_trace_rule, false_rule.body))
+                    if self._last_trace_rule is not None:
+                        self._last_trace_rule = None
+                else:  # Other cases
+                    self.add_to_translation(self.support_rule(rule_id, rule_ast))
+                    self.add_to_translation(self.fbody_rule(rule_id, rule_ast))
+                    if self._last_trace_rule is not None:
+                        self.add_to_translation(self.label_rule(rule_id, self._last_trace_rule, rule_ast.body))
+                        self._last_trace_rule = None
+        
     def get_translation(self):
         return self._translation

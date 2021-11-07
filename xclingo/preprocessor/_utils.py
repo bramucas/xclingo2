@@ -83,15 +83,18 @@ def translate_mute(program):
     return program
 
 def is_xclingo_label(rule_ast):
-    return rule_ast.head.atom.symbol.ast_type == ast.ASTType.Function \
+    return rule_ast.head.ast_type == ast.ASTType.Literal \
+        and rule_ast.head.atom.symbol.ast_type == ast.ASTType.Function \
         and rule_ast.head.atom.symbol.name == "_xclingo_label"
 
 def is_xclingo_show_trace(rule_ast):
-    return rule_ast.head.atom.symbol.ast_type == ast.ASTType.Function \
+    return rule_ast.head.ast_type == ast.ASTType.Literal \
+        and rule_ast.head.atom.symbol.ast_type == ast.ASTType.Function \
         and rule_ast.head.atom.symbol.name == "_xclingo_show_trace"
 
 def is_xclingo_mute(rule_ast):
-    return rule_ast.head.atom.symbol.ast_type == ast.ASTType.Function \
+    return rule_ast.head.ast_type == ast.ASTType.Literal \
+        and rule_ast.head.atom.symbol.ast_type == ast.ASTType.Function \
             and rule_ast.head.atom.symbol.name == "_xclingo_muted"
 
 def is_label_rule(rule_ast):
@@ -99,5 +102,5 @@ def is_label_rule(rule_ast):
     return str(rule_ast.head.atom.symbol.arguments[0]) == "id"
 
 def is_choice_rule(rule_ast):
-    #TODO:
-    return False
+    return rule_ast.head.ast_type == ast.ASTType.Aggregate \
+        and hasattr(rule_ast.head, 'function') == False
