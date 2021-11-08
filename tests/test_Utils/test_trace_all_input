@@ -1,0 +1,2 @@
+%!trace {"% alcohol's level is %",P,A} alcohol(P,A) : A>30, not inprison(P).
+%!trace {"% has driven",P} drive(P).
