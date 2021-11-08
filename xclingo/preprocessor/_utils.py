@@ -82,6 +82,14 @@ def translate_mute(program):
 
     return program
 
+def is_constraint(rule_ast):
+    if rule_ast.ast_type == ast.ASTType.Rule:
+        if hasattr(rule_ast, 'atom'):
+            return  rule_ast.head.atom.ast_type == ast.ASTType.BooleanConstant \
+                and rule_ast.head.atom == ast.BooleanConstant(0)
+    return False
+    
+
 def is_xclingo_label(rule_ast):
     return rule_ast.head.ast_type == ast.ASTType.Literal \
         and rule_ast.head.atom.symbol.ast_type == ast.ASTType.Function \
