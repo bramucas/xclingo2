@@ -1,3 +1,3 @@
 from ._main import Explainer
 
-__version__='1.9'
+__version__='1.9.2'
