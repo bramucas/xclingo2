@@ -83,7 +83,7 @@ class Explainer():
         return program
 
     def add(self, program_name:str, parameters: Iterable[str], program:str):
-        self._memory.append(program)
+        self._memory.append((program_name, program))
 
     def _initialize_control(self):
         return Control(
@@ -95,11 +95,8 @@ class Explainer():
 
     def _translate_program(self):
         self._preprocessor._rule_count = 1
-        for program in self._memory:
-                parse_string(
-                    Preprocessor.translate_annotations(program), 
-                    lambda ast: self._preprocessor.translate_rule(ast),
-                )
+        for name, program in self._memory:
+            self._preprocessor.translate_program(program, name=name)
 
     def _ground(self, control, model):
         if not self._translated:

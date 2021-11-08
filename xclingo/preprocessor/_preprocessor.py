@@ -1,6 +1,7 @@
 from clingo.symbol import Number
 from ._utils import translate_show_all, translate_trace, translate_trace_all, translate_mute, \
-    is_xclingo_label, is_xclingo_show_trace, is_choice_rule, is_label_rule, is_xclingo_mute
+    is_xclingo_label, is_xclingo_show_trace, is_choice_rule, is_label_rule, is_xclingo_mute, \
+    is_constraint
 from clingo import ast
 
 class Preprocessor:
@@ -250,7 +251,7 @@ class Preprocessor:
             ast.SymbolicAtom(rule_ast.head.atom.symbol.arguments[0]),
         )
         rule = ast.Rule(loc, rule_ast.head, list(self.sup_body([literal_head] + list(rule_ast.body))))
-        return rule
+        return rule    
 
     def add_to_translation(self, a):
         self._translation+=f'{a}\n'
@@ -260,7 +261,7 @@ class Preprocessor:
 
     def translate_rule(self, rule_ast):
         self.add_comment_to_translation(rule_ast)
-        if rule_ast.ast_type == ast.ASTType.Rule:
+        if rule_ast.ast_type == ast.ASTType.Rule and not is_constraint(rule_ast):
             if is_xclingo_label(rule_ast):
                 if is_label_rule(rule_ast):
                     self._last_trace_rule = rule_ast
@@ -295,6 +296,13 @@ class Preprocessor:
                     if self._last_trace_rule is not None:
                         self.add_to_translation(self.label_rule(rule_id, self._last_trace_rule, rule_ast.body))
                         self._last_trace_rule = None
-        
+    
+    def translate_program(self, program, name=''):
+        self._translation += '%'*8 + name + '%'*8 + '\n'
+        ast.parse_string(
+            Preprocessor.translate_annotations(program), 
+            lambda ast: self.translate_rule(ast),
+        )
+
     def get_translation(self):
         return self._translation

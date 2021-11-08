@@ -6,21 +6,21 @@ import sys
 def check_options():
     # Handles arguments of xclingo
     parser = ArgumentParser(description='Tool for explaining (and debugging) ASP programs', prog='xclingo')
-    parser.add_argument('--only-translate', action='store_true',
+    optional_group = parser.add_mutually_exclusive_group()
+    optional_group.add_argument('--only-translate', action='store_true',
                         help="Prints the internal translation and exits.")
-    parser.add_argument('--only-translate-annotations', action='store_true',
+    optional_group.add_argument('--only-translate-annotations', action='store_true',
                         help="Prints the internal translation and exits.")
-    parser.add_argument('--only-explanation-atoms', action='store_true',
+    optional_group.add_argument('--only-explanation-atoms', action='store_true',
                         help="Prints the atoms used by the explainer to build the explanations.")
     parser.add_argument('--auto-tracing', type=str, choices=["none", "facts", "all"], default="none",
                         help="Automatically creates traces for the rules of the program. Default: none.")
-    parser.add_argument('n', nargs='?', default='1', type=str, help="Number of answer sets.")
-    parser.add_argument('nexpl', nargs='?', default='1', type=str, help="Number of explanations to be shown. WARNING: do not assume which atoms will be explained.")
+    parser.add_argument('-n', nargs=2, default=(1,1), type=int, help="Number of answer sets and number of desired explanations.")
     parser.add_argument('infiles', nargs='+', type=FileType('r'), default=sys.stdin, help="ASP program")
     return parser.parse_args()
 
 def read_files(files):
-    return "".join([file.read() for file in files])
+    return "\n".join([file.read() for file in files])
 
 def translate(program, auto_trace):
     explainer = Explainer(auto_trace=auto_trace)
@@ -55,27 +55,31 @@ def print_text_explanations(control, explainer:Explainer):
 
 def main():
     args = check_options()
-    program = read_files(args.infiles)
 
     if args.only_translate_annotations:
+        program = read_files(args.infiles)
         from xclingo.preprocessor import Preprocessor
         print(Preprocessor.translate_annotations(program))
         return 0
 
     if args.only_translate:
+        program = read_files(args.infiles)
         print(translate(program, args.auto_tracing))
         return 0
 
-    control = Control([args.n])
+    control = Control([str(args.n[0])])
     explainer = Explainer(
         [
-            args.nexpl, 
+            str(args.n[1]), 
         ], 
         auto_trace=args.auto_tracing
     )
 
-    explainer.add('base', [], program)
-    control.add("base", [], program)
+    for file in args.infiles:
+        prog = file.read()
+        explainer.add(file.name, [], prog)
+        control.add("base", [], prog)
+
     control.ground([("base", [])])
 
     if args.only_explanation_atoms:
