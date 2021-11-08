@@ -15,7 +15,7 @@ class Preprocessor:
         return n
 
     @staticmethod
-    def translate_comments(program):
+    def translate_annotations(program):
         return translate_trace_all(
             translate_show_all(
                 translate_trace(

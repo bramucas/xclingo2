@@ -7,15 +7,15 @@ def check_options():
     # Handles arguments of xclingo
     parser = ArgumentParser(description='Tool for explaining (and debugging) ASP programs', prog='xclingo')
     parser.add_argument('--only-translate', action='store_true',
-                        help="Prints the internal translation and exits. Default: false.")
-    parser.add_argument('--only-translate-comments', action='store_true',
-                        help="Prints the internal translation and exits. Default: false.")
+                        help="Prints the internal translation and exits.")
+    parser.add_argument('--only-translate-annotations', action='store_true',
+                        help="Prints the internal translation and exits.")
     parser.add_argument('--only-explanation-atoms', action='store_true',
-                        help="Prints the atoms used by the explainer to build the explanations. Default: false.")
+                        help="Prints the atoms used by the explainer to build the explanations.")
     parser.add_argument('--auto-tracing', type=str, choices=["none", "facts", "all"], default="none",
                         help="Automatically creates traces for the rules of the program. Default: none.")
-    parser.add_argument('n', default='1', type=str, help="Number of answer sets.")
-    parser.add_argument('nexpl', default='1', type=str, help="Number of explanations for each atom to be explained.")
+    parser.add_argument('n', nargs='?', default='1', type=str, help="Number of answer sets.")
+    parser.add_argument('nexpl', nargs='?', default='1', type=str, help="Number of explanations to be shown. WARNING: do not assume which atoms will be explained.")
     parser.add_argument('infiles', nargs='+', type=FileType('r'), default=sys.stdin, help="ASP program")
     return parser.parse_args()
 
@@ -57,9 +57,9 @@ def main():
     args = check_options()
     program = read_files(args.infiles)
 
-    if args.only_translate_comments:
+    if args.only_translate_annotations:
         from xclingo.preprocessor import Preprocessor
-        print(Preprocessor.translate_comments(program))
+        print(Preprocessor.translate_annotations(program))
         return 0
 
     if args.only_translate:

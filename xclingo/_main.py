@@ -97,7 +97,7 @@ class Explainer():
         self._preprocessor._rule_count = 1
         for program in self._memory:
                 parse_string(
-                    Preprocessor.translate_comments(program), 
+                    Preprocessor.translate_annotations(program), 
                     lambda ast: self._preprocessor.translate_rule(ast),
                 )
 
