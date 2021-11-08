@@ -86,7 +86,12 @@ class Explainer():
         self._memory.append(program)
 
     def _initialize_control(self):
-        return Control(self._internal_control_arguments, logger=self.logger)
+        return Control(
+            self._internal_control_arguments + \
+                [
+                    '--project=project'
+                ], 
+            logger=self.logger)
 
     def _translate_program(self):
         self._preprocessor._rule_count = 1

@@ -40,3 +40,4 @@ _xclingo_label_tree(X, Y, Label) :- _xclingo_tree(X, Y), _xclingo_label(Y, Label
 % cause(true, true,  Caused, ID) :- f(ID, Caused, empty).
 
 #show _xclingo_label_tree/3.
+#project _xclingo_label_tree/3.
