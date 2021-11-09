@@ -1,4 +1,5 @@
 from xclingo import Explainer as Explainer
+from xclingo import __version__ as xclingo_version
 from clingo import Control
 from argparse import ArgumentParser, FileType
 import sys
@@ -6,6 +7,9 @@ import sys
 def check_options():
     # Handles arguments of xclingo
     parser = ArgumentParser(description='Tool for explaining (and debugging) ASP programs', prog='xclingo')
+    parser.add_argument('--version', action='version',
+                        version='xclingo {version}'.format(version=xclingo_version),
+                        help='Prints the version and exists.')
     optional_group = parser.add_mutually_exclusive_group()
     optional_group.add_argument('--only-translate', action='store_true',
                         help="Prints the internal translation and exits.")
@@ -55,6 +59,10 @@ def print_text_explanations(control, explainer:Explainer):
 
 def main():
     args = check_options()
+
+    if args.version:
+        print(f'xclingo {xclingo_version}')
+        return 0
 
     if args.only_translate_annotations:
         program = read_files(args.infiles)
