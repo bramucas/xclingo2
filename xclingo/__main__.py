@@ -60,10 +60,6 @@ def print_text_explanations(control, explainer:Explainer):
 def main():
     args = check_options()
 
-    if args.version:
-        print(f'xclingo {xclingo_version}')
-        return 0
-
     if args.only_translate_annotations:
         program = read_files(args.infiles)
         from xclingo.preprocessor import Preprocessor
