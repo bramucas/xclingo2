@@ -84,7 +84,7 @@ def translate_mute(program):
 
 def is_constraint(rule_ast):
     if rule_ast.ast_type == ast.ASTType.Rule:
-        if hasattr(rule_ast, 'atom'):
+        if hasattr(rule_ast.head, 'atom'):
             return  rule_ast.head.atom.ast_type == ast.ASTType.BooleanConstant \
                 and rule_ast.head.atom == ast.BooleanConstant(0)
     return False
