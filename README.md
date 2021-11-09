@@ -55,17 +55,16 @@ Mark some atoms as *untraceable*. Therefore, explanations will not include them,
 ## Usage
 
 ```
-usage: xclingo [-h] [--only-translate] [--only-translate-annotations] [--only-explanation-atoms] [--auto-tracing {none,facts,all}] [n] [nexpl] infiles [infiles ...]
+usage: xclingo [-h] [--version] [--only-translate | --only-translate-annotations | --only-explanation-atoms] [--auto-tracing {none,facts,all}] [-n N N] infiles [infiles ...]
 
 Tool for explaining (and debugging) ASP programs
 
 positional arguments:
-  n                     Number of answer sets.
-  nexpl                 Number of explanations to be shown. WARNING: do not assume which atoms will be explained.
   infiles               ASP program
 
 optional arguments:
   -h, --help            show this help message and exit
+  --version             Prints the version and exists.
   --only-translate      Prints the internal translation and exits.
   --only-translate-annotations
                         Prints the internal translation and exits.
@@ -73,6 +72,7 @@ optional arguments:
                         Prints the atoms used by the explainer to build the explanations.
   --auto-tracing {none,facts,all}
                         Automatically creates traces for the rules of the program. Default: none.
+  -n N N                Number of answer sets and number of desired explanations.
 ```
 
 ## Differences with respect to the previous version
