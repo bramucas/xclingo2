@@ -20,7 +20,7 @@ xclingo must be provided with a maximum number of solutions to be computed for t
 
 An example (all the solutions and 2 explanations):
 ```
-xclingo 0 2 examples/drive.lp
+xclingo -n 0 2 examples/drive.lp
 ```
 
 Defaults are 1 solution and 1 explanation.
