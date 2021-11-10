@@ -223,7 +223,7 @@ class Preprocessor:
                 False,
             ))
         )
-        body = [fatom] + list(self.fbody_body(rule_ast.body))
+        body = [fatom] + list(self.sup_body(rule_ast.body))
         rule = ast.Rule(loc, rule_ast.head, body)
         return rule
 
