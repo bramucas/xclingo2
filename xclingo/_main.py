@@ -26,7 +26,6 @@ class Context:
             return Function('empty', [], True)
 
 class Explainer():
-    
     def __init__(self, internal_control_arguments=['1'], auto_trace="none"):
         self._preprocessor = Preprocessor()
         self._memory = []
@@ -142,3 +141,33 @@ class Explainer():
         self._ground(control, model)
         self.print_messages()
         return self._get_explanations(control)
+
+
+class XclingoControl:
+    def __init__(self, n_solutions='1', n_explanations='1', auto_trace='none'):
+        self.n_solutions = n_solutions
+        self.n_explanations = n_explanations
+
+        self.control = Control([n_solutions if type(n_solutions)==str else str(n_solutions)])
+        self.explainer = Explainer(
+            [
+                n_explanations if type(n_explanations)==str else str(n_explanations), 
+            ], 
+            auto_trace=auto_trace
+        )
+
+    def add(self, name, parameters, program):
+        self.explainer.add(name, [], program)
+        self.control.add("base", parameters, program)
+
+    def ground(self, context=None):
+        self.control.ground([("base", [])], context)
+
+    def explain(self):
+        with self.control.solve(yield_=True) as it:
+            nanswer=1
+            for m in it:
+                print(f'Answer {nanswer}')
+                for e in self.explainer.explain(m):
+                    print(e.ascii_tree())
+                nanswer+=1
