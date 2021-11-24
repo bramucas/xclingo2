@@ -2,6 +2,7 @@ from typing import Iterable
 from clingo import Model, Function, String
 from clingo.ast import ProgramBuilder, parse_string
 from clingo.control import Control
+from clingo.symbol import SymbolType
 from xclingo.explanation import Explanation
 from xclingo.preprocessor import Preprocessor
 
@@ -9,9 +10,12 @@ from clingo.core import MessageCode
 
 class Context:
     def label(self, text, tup):
-        text = str(text).strip('"')
+        if text.type == SymbolType.String:
+            text = text.string
+        else:
+            text = str(text).strip('"')
         for val in tup.arguments:
-            text = text.replace("%", str(val), 1)
+            text = text.replace("%", val.string if val.type==SymbolType.String else str(val), 1)
         return [String(text)]
 
     def inbody(self, body):
