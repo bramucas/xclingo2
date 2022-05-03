@@ -180,7 +180,14 @@ class XclingoControl:
                     on_explanation(self.explainer.explain(m, context=self._explainer_context))
 
     def explain_and_print(self):
-        def print_explanations(explanation_it):
-            for e in explanation_it:
-                print(e.ascii_tree)
-        self.explain(on_explanation=print_explanations)
+        print(self._default_output())
+
+    def _default_output(self):
+        output = ''
+        n = 0
+        for answer in self.explain():
+            n = 1
+            output += f'Answer {n}\n'
+            output += '\n'.join([expl.ascii_tree() for expl in answer])
+            output += '\n'
+        return output
