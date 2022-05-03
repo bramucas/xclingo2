@@ -164,7 +164,7 @@ class XclingoControl:
 
     def add(self, name, parameters, program):
         self.explainer.add(name, [], program)
-        self.control.add("base", parameters, program)
+        self.control.add("base", parameters, program.replace('#show', '%#show'))
 
     def ground(self, context=None, explainer_context=None):
         self.control.ground([("base", [])], context)
@@ -180,7 +180,12 @@ class XclingoControl:
                     on_explanation(self.explainer.explain(m, context=self._explainer_context))
 
     def explain_and_print(self):
-        print(self._default_output())
+        n = 0
+        for answer in self.explain():
+            n += 1
+            print(f'Answer {1}')
+            for expl in answer:
+                print(expl.ascii_tree())
 
     def _default_output(self):
         output = ''
