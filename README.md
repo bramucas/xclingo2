@@ -25,6 +25,85 @@ xclingo -n 0 2 examples/drive.lp
 
 Defaults are 1 solution and 1 explanation.
 
+## Example
+
+We have any ASP program:
+```
+% examples/dont_drive_drunk.lp
+
+person(gabriel;clare).
+
+drive(gabriel).
+alcohol(gabriel, 40).
+resist(gabriel).
+
+drive(clare).
+alcohol(clare, 5).
+
+punish(P) :- drive(P), alcohol(P,A), A>30, person(P).
+punish(P) :- resist(P), person(P).
+
+sentence(P, prison) :- punish(P).
+sentence(P, innocent) :- person(P), not punish(P).
+```
+
+And we write some special comments:
+```
+% examples/dont_drive_drunk.lp
+
+person(gabriel;clare).
+
+drive(gabriel).
+alcohol(gabriel, 40).
+resist(gabriel).
+
+drive(clare).
+alcohol(clare, 5).
+
+%!trace_rule {"% drove drunk", P}
+punish(P) :- drive(P), alcohol(P,A), A>30, person(P).
+
+%!trace_rule {"% resisted to authority", P}
+punish(P) :- resist(P), person(P).
+
+%!trace_rule {"% goes to prison",P}
+sentence(P, prison) :- punish(P).
+
+%!trace_rule {"% is innocent by default",P}
+sentence(P, innocent) :- person(P), not punish(P).
+
+%!trace {"% alcohol's level is %",P,A} alcohol(P,A).
+%!trace {"% was drunk",P} alcohol(P,A).
+
+%!show_trace sentence(P,S).
+```
+We will call those comments *annotations* from now on.
+
+Now we can obtain the answer sets of the (annotated) program with clingo (```clingo -n 0 examples/dont_drive_drunk.lp```):
+```
+Answer: 1
+person(gabriel) person(clare) alcohol(gabriel,40) alcohol(clare,5) drive(gabriel) drive(clare) punish(gabriel) resist(gabriel) sentence(clare,innocent) sentence(gabriel,prison)
+SATISFIABLE
+```
+
+But also very fashion natural language explanations of with xclingo (```xclingo -n 0 0 examples/dont_drive_drunk.lp```):
+```
+Answer 1
+  *
+  |__clare is innocent by default
+
+  *
+  |__gabriel goes to prison
+  |  |__gabriel drove drunk
+  |  |  |__gabriel alcohol's level is 40;gabriel was drunk
+
+  *
+  |__gabriel goes to prison
+  |  |__gabriel resisted to authority
+```
+
+*Note:* for this small example almost all the rules and facts of the program have its own text label (this is, they have been *labelled*). Actually, only labelled rules are used to build the explanations so you can still obtain clear, short explanations even for most complex ASP programs.
+
 ## Annotations
 
 ### %!trace_rule
