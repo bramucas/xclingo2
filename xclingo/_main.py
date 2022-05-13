@@ -1,7 +1,8 @@
-from typing import Iterable
+from typing import Iterable, Sequence
 from clingo import Model, Function, String
 from clingo.ast import ProgramBuilder, parse_string
 from clingo.control import Control
+from clingo.symbol import SymbolType
 from xclingo.explanation import Explanation
 from xclingo.preprocessor import Preprocessor
 
@@ -9,9 +10,12 @@ from clingo.core import MessageCode
 
 class Context:
     def label(self, text, tup):
-        text = str(text).strip('"')
+        if text.type == SymbolType.String:
+            text = text.string
+        else:
+            text = str(text).strip('"')
         for val in tup.arguments:
-            text = text.replace("%", str(val), 1)
+            text = text.replace("%", val.string if val.type==SymbolType.String else str(val), 1)
         return [String(text)]
 
     def inbody(self, body):
@@ -26,7 +30,6 @@ class Context:
             return Function('empty', [], True)
 
 class Explainer():
-    
     def __init__(self, internal_control_arguments=['1'], auto_trace="none"):
         self._preprocessor = Preprocessor()
         self._memory = []
@@ -98,7 +101,7 @@ class Explainer():
         for name, program in self._memory:
             self._preprocessor.translate_program(program, name=name)
 
-    def _ground(self, control, model):
+    def _ground(self, control, model, context=None):
         if not self._translated:
             self._translate_program()
             self._translated
@@ -114,7 +117,7 @@ class Explainer():
                 atm_id = backend.add_atom(Function('_xclingo_model', [sym], True))
                 backend.add_rule([atm_id], [], False)
             
-        control.ground([('base', [])], context=Context())
+        control.ground([('base', [])], context=context if context is not None else Context())
 
 
     def _get_explanations(self, control):
@@ -136,9 +139,60 @@ class Explainer():
         self.print_messages()
         return self._get_models(control)
 
-    def explain(self, model:Model) -> Iterable[Explanation]:
+    def explain(self, model:Model, context=None) -> Iterable[Explanation]:
         control = self._initialize_control()    
         self.clean_log()
-        self._ground(control, model)
+        self._ground(control, model, context)
         self.print_messages()
         return self._get_explanations(control)
+
+
+class XclingoControl:
+    def __init__(self, n_solutions='1', n_explanations='1', auto_trace='none'):
+        self.n_solutions = n_solutions
+        self.n_explanations = n_explanations
+
+        self.control = Control([n_solutions if type(n_solutions)==str else str(n_solutions)])
+        self.explainer = Explainer(
+            [
+                n_explanations if type(n_explanations)==str else str(n_explanations), 
+            ], 
+            auto_trace=auto_trace
+        )
+
+        self._explainer_context = None
+
+    def add(self, name, parameters, program):
+        self.explainer.add(name, [], program)
+        self.control.add("base", parameters, program.replace('#show', '%#show'))
+
+    def ground(self, context=None, explainer_context=None):
+        self.control.ground([("base", [])], context)
+
+        self._explainer_context = explainer_context
+
+    def explain(self, on_explanation=None):
+        with self.control.solve(yield_=True) as it:
+            for m in it:
+                if on_explanation is None:
+                    yield self.explainer.explain(m, context=self._explainer_context)
+                else:
+                    on_explanation(self.explainer.explain(m, context=self._explainer_context))
+
+    def explain_and_print(self):
+        n = 0
+        for answer in self.explain():
+            n += 1
+            print(f'Answer {1}')
+            for expl in answer:
+                print(expl.ascii_tree())
+
+    def _default_output(self):
+        output = ''
+        n = 0
+        for answer in self.explain():
+            n = 1
+            output += f'Answer {n}\n'
+            output += '\n'.join([expl.ascii_tree() for expl in answer])
+            output += '\n'
+        return output

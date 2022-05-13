@@ -1,0 +1,13 @@
+Answer 1
+  *
+  |__john is holding 0 items at time point 0
+
+  *
+  |__john is holding 1 items at time point 1
+
+  *
+  |__mary is holding 1 items at time point 1
+
+  *
+  |__mary is holding 2 items at time point 0
+

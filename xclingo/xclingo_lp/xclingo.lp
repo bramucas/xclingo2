@@ -35,6 +35,7 @@ _xclingo_tree(P, C) :- _xclingo_reach(P, C), _xclingo_marked(P), _xclingo_marked
 _xclingo_label_tree(X, Y, Label) :- _xclingo_tree(X, Y), _xclingo_label(Y, Label).
 
 % for projection
+_xclingo_label_tree(root, ChildLabel) :- _xclingo_label_tree(root, C, ChildLabel).
 _xclingo_label_tree(ParentLabel, ChildLabel) :- _xclingo_label_tree(PP, P, ParentLabel), _xclingo_label_tree(P, C, ChildLabel).
 
 % Necesitamos todo?

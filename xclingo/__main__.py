@@ -80,7 +80,7 @@ def main():
     )
 
     for file in args.infiles:
-        prog = file.read()
+        prog = file.read().replace('#show', '%#show')
         explainer.add(file.name, [], prog)
         control.add("base", [], prog)
 
