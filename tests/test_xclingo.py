@@ -11,7 +11,7 @@ class TestXclingo:
             auto_trace=auto_tracing,
         )
         xcontrol.add('base', [], (datadir / f'{test_case}.lp').read_text())
-        xcontrol.ground(explainer_context=XclingoContext())
+        xcontrol.ground()
         
         result = xcontrol._default_output()
         expected = (datadir / f'expected_{test_case}.txt').read_text()
