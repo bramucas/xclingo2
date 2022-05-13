@@ -102,6 +102,13 @@ class Explainer():
             self._preprocessor.translate_program(program, name=name)
 
     def _ground(self, control, model, context=None):
+        """Grounding for the explainer clingo control. It translates the program and adds the original program's model as facts.
+
+        Args:
+            control (_type_): _description_
+            model (_type_): _description_
+            context (_type_, optional): _description_. Defaults to None.
+        """
         if not self._translated:
             self._translate_program()
             self._translated
@@ -113,7 +120,7 @@ class Explainer():
             )
         
         with control.backend() as backend:
-            for sym in model.symbols(shown=True):
+            for sym in model.symbols(atoms=True):
                 atm_id = backend.add_atom(Function('_xclingo_model', [sym], True))
                 backend.add_rule([atm_id], [], False)
             
@@ -123,7 +130,7 @@ class Explainer():
     def _get_explanations(self, control):
         with control.solve(yield_=True) as it:
             for expl_model in it:
-                syms = expl_model.symbols(shown=True)
+                syms = expl_model.symbols(shown=True)  # shown is True because we want to get only the summarized graph
                 if len(syms)>0:
                     yield Explanation.from_model(syms)
     
@@ -163,29 +170,49 @@ class XclingoControl:
         self._explainer_context = None
 
     def add(self, name, parameters, program):
-        self.explainer.add(name, [], program)
-        self.control.add("base", parameters, program.replace('#show', '%#show'))
+        """It adds a program to the control.
 
-    def ground(self, context=None, explainer_context=None):
+        Args:
+            name (str): name of program block to add.
+            parameters (Iterable[str]): a list (or iterable) of for the program.
+            program (str): a logic program in ASP format.
+        """
+        self.control.add("base", parameters, program)
+        self.explainer.add(name, [], program)
+        
+    def ground(self, context=None):
+        """Ground (only base for now) programs.
+
+        Args:
+            context (Object, optional): Context to be passed to the original program control. Defaults to None.
+        """
         self.control.ground([("base", [])], context)
 
-        self._explainer_context = explainer_context
+    def get_xclingo_models(self):
+        """Returns the clingo.Model objects of the explainer, this is the models which represent the explanations.
+
+        Returns:
+            Generator[cilngo.Model]: a generator of clingo.Model objects.
+        """
+        with self.control.solve(yield_=True) as it:
+            for model in it:
+                return self.explainer.get_xclingo_models(model)
 
     def explain(self, on_explanation=None):
+        """Returns a generator of xclingo.explanation.Explanation objects. If on_explanation is not None, it is called for each explanation.
+
+        Args:
+            on_explanation (Callable, optional): callable that will be called for each Explanation, it must receive Explanation as a parameter. Defaults to None.
+
+        Yields:
+            Explation: a tree-like object that represents an explanation.
+        """
         with self.control.solve(yield_=True) as it:
             for m in it:
                 if on_explanation is None:
                     yield self.explainer.explain(m, context=self._explainer_context)
                 else:
                     on_explanation(self.explainer.explain(m, context=self._explainer_context))
-
-    def explain_and_print(self):
-        n = 0
-        for answer in self.explain():
-            n += 1
-            print(f'Answer {1}')
-            for expl in answer:
-                print(expl.ascii_tree())
 
     def _default_output(self):
         output = ''
