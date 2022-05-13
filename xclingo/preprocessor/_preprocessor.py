@@ -38,19 +38,43 @@ class Preprocessor:
                 ast.Position("",0,0),
             )
         for lit in lit_list:
-            if lit.atom.ast_type == ast.ASTType.SymbolicAtom:
-                yield ast.Literal(
-                    loc,
-                    lit.sign,
-                    ast.SymbolicAtom(
-                        ast.Function(
-                            loc,
-                            "_xclingo_model",
-                            [lit.atom.symbol],
-                            False,
-                            )
+            if lit.ast_type == ast.ASTType.Literal:
+                if lit.atom.ast_type == ast.ASTType.SymbolicAtom:
+                    yield ast.Literal(
+                        loc,
+                        lit.sign,
+                        ast.SymbolicAtom(
+                            ast.Function(
+                                loc,
+                                "_xclingo_model",
+                                [lit.atom.symbol],
+                                False,
+                                )
+                        )
                     )
-                )
+                
+                elif lit.atom.ast_type == ast.ASTType.BodyAggregate:
+                    yield ast.Literal(
+                        loc,
+                        lit.sign,
+                        ast.BodyAggregate(
+                            loc,
+                            left_guard=lit.atom.left_guard,
+                            function=lit.atom.function,
+                            elements=[
+                                ast.BodyAggregateElement(
+                                    terms=list(self.sup_body(e.terms)),
+                                    condition=list(self.sup_body(e.condition)),
+                                )
+                                for e in lit.atom.elements
+                            ],
+                            right_guard=lit.atom.right_guard,
+                        )
+                    )
+                
+                else:
+                    yield lit
+
             else:
                 yield lit
     
@@ -126,33 +150,56 @@ class Preprocessor:
                 ast.Position("",0,0),
             )
         for lit in lit_list:
-            if lit.atom.ast_type == ast.ASTType.SymbolicAtom:
-                if lit.sign == ast.Sign.NoSign:
+            if lit.ast_type == ast.ASTType.Literal:
+                if lit.atom.ast_type == ast.ASTType.SymbolicAtom:
+                    if lit.sign == ast.Sign.NoSign:
+                        yield ast.Literal(
+                            loc,
+                            lit.sign,
+                            ast.SymbolicAtom(
+                                ast.Function(
+                                    loc,
+                                    "_xclingo_f_atom",
+                                    [lit.atom.symbol],
+                                    False,
+                                    )
+                            )
+                        )
+                    else:
+                        yield ast.Literal(
+                            loc,
+                            ast.Sign.Negation,
+                            ast.SymbolicAtom(
+                                ast.Function(
+                                    loc,
+                                    "_xclingo_model",
+                                    [lit.atom.symbol],
+                                    False,
+                                    )
+                            )
+                        )
+                
+                elif lit.atom.ast_type == ast.ASTType.BodyAggregate:
                     yield ast.Literal(
                         loc,
                         lit.sign,
-                        ast.SymbolicAtom(
-                            ast.Function(
-                                loc,
-                                "_xclingo_f_atom",
-                                [lit.atom.symbol],
-                                False,
+                        ast.BodyAggregate(
+                            loc,
+                            left_guard=lit.atom.left_guard,
+                            function=lit.atom.function,
+                            elements=[
+                                ast.BodyAggregateElement(
+                                    terms=list(self.fbody_body(e.terms)),
+                                    condition=list(self.fbody_body(e.condition)),
                                 )
+                                for e in lit.atom.elements
+                            ],
+                            right_guard=lit.atom.right_guard,
                         )
                     )
+
                 else:
-                    yield ast.Literal(
-                        loc,
-                        ast.Sign.Negation,
-                        ast.SymbolicAtom(
-                            ast.Function(
-                                loc,
-                                "_xclingo_model",
-                                [lit.atom.symbol],
-                                False,
-                                )
-                        )
-                    )
+                    yield lit
             else:
                 yield lit
 
@@ -223,7 +270,7 @@ class Preprocessor:
                 False,
             ))
         )
-        body = [fatom] + list(self.fbody_body(rule_ast.body))
+        body = [fatom] + list(self.sup_body(rule_ast.body))
         rule = ast.Rule(loc, rule_ast.head, body)
         return rule
 
