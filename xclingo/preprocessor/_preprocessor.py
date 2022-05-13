@@ -4,12 +4,66 @@ from ._utils import translate_show_all, translate_trace, translate_trace_all, tr
     is_constraint
 from clingo import ast
 
+class ConstraintPreprocessor:
+    def __init__(self):
+        self._constraint_count = 1
+        self._lits = []
+        self.there_is_a_label = False
+        self._translation = ""
+
+    def increment_constraint_count(self):
+        n = self._constraint_count
+        self._constraint_count += 1
+        return n
+
+    def add_to_translation(self, a):
+        self._translation+=f'{a}\n'
+
+    def add_comment_to_translation(self, a):
+        self._translation+=f'% {a}\n'
+
+    def relax_labelled_constraint(self, rule_ast):
+        # if there is a label, self.there_is_a_label is set to True but it's not used
+        if is_xclingo_label(rule_ast):
+            self.there_is_a_label = True
+        else:
+        #  if there is a constraint and self.there_is_a_label is True, we put a head and add it to the translation
+            if is_constraint(rule_ast) and self.there_is_a_label == True:
+                loc = ast.Location(
+                        ast.Position("",0,0),
+                        ast.Position("",0,0),
+                    )
+                new_rule = ast.Rule(
+                    location = loc,
+                    head= ast.Literal(
+                        location = loc,
+                        sign=ast.Sign.NoSign,
+                        atom = ast.SymbolicAtom(
+                            ast.Function(loc, f'_xclingo_violated_constraint_{self.increment_constraint_count()}', [], False)
+                        ),
+                    ),
+                    body=rule_ast.body,
+                )
+                rule_ast = new_rule
+            self.add_to_translation(rule_ast)
+            self.there_is_a_label = False
+
+    def preprocess(self, program):
+        ast.parse_string(
+            translate_trace(program), 
+            lambda ast: self.relax_labelled_constraint(ast),
+        )
+
+    def get_translation(self):
+        return self._translation
+        
+
 class Preprocessor:
     def __init__(self):
         self._rule_count = 1
         self._last_trace_rule = None
         self._translation = ""
-    
+
     def increment_rule_count(self):
         n = self._rule_count
         self._rule_count += 1
@@ -261,15 +315,15 @@ class Preprocessor:
 
     def translate_rule(self, rule_ast):
         self.add_comment_to_translation(rule_ast)
-        if rule_ast.ast_type == ast.ASTType.Rule and not is_constraint(rule_ast):
+        if rule_ast.ast_type == ast.ASTType.Rule:
             if is_xclingo_label(rule_ast):
                 if is_label_rule(rule_ast):
                     self._last_trace_rule = rule_ast
                     return
+                # if it is label atom
                 self.add_to_translation(self.label_atom(rule_ast))
             elif is_xclingo_show_trace(rule_ast):
                 self.add_to_translation(self.show_trace(rule_ast))
-                pass
             elif is_xclingo_mute(rule_ast):
                 self.add_to_translation(self.mute(rule_ast))
             else:
@@ -290,6 +344,29 @@ class Preprocessor:
                             self.add_to_translation(self.label_rule(rule_id, self._last_trace_rule, false_rule.body))
                     if self._last_trace_rule is not None:
                         self._last_trace_rule = None
+                elif is_constraint(rule_ast) and self._last_trace_rule is not None:
+                    loc = ast.Location(ast.Position('',0,0), ast.Position('',0,0))
+                    false_head = ast.Literal(
+                        loc,
+                        ast.Sign.NoSign,
+                        ast.SymbolicAtom(
+                            ast.Function(
+                                loc,
+                                "_xclingo_violated_constraint",
+                                [],
+                                False,
+                            ),
+                        )
+                    )
+                    false_rule = ast.Rule(
+                        loc,
+                        false_head,
+                        rule_ast.body,
+                    )
+                    self.add_to_translation(self.support_rule(rule_id, false_rule))
+                    self.add_to_translation(self.fbody_rule(rule_id, false_rule))
+                    self.add_to_translation(self.label_rule(rule_id, self._last_trace_rule, false_rule.body))
+                    self._last_trace_rule = None
                 else:  # Other cases
                     self.add_to_translation(self.support_rule(rule_id, rule_ast))
                     self.add_to_translation(self.fbody_rule(rule_id, rule_ast))
