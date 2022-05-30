@@ -107,7 +107,7 @@ class ExplanationNode(Explanation):
         self.causes = list() if causes is None else causes
 
     def get_node_text(self):
-        return ";".join(self.labels)
+        return ";".join(sorted(list(self.labels)))
 
     def _node_equals(self, other):
         if not isinstance(other, ExplanationNode):
