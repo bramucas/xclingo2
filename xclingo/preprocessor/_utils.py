@@ -146,3 +146,7 @@ def is_choice_rule(rule_ast):
         and rule_ast.head.ast_type == ast.ASTType.Aggregate
         and hasattr(rule_ast.head, "function") == False
     )
+
+
+def is_disyunctive_head(rule_ast):
+    return rule_ast.head.ast_type == ast.ASTType.Disjunction

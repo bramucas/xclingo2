@@ -12,6 +12,7 @@ from ._utils import (
     is_label_rule,
     is_xclingo_mute,
     is_constraint,
+    is_disyunctive_head,
 )
 
 
@@ -151,7 +152,6 @@ class Preprocessor:
     @staticmethod
     def propagates(lit_list: Iterable[ast.AST]):
         """Captures the part of a body that propagate causes.
-
         This is, the positive part of the body of a rule. Comparison literals are ignored.
 
         Args:
@@ -566,7 +566,8 @@ class Preprocessor:
                 self.add_to_translation(self.mute(rule_ast))
             else:
                 rule_id = self._increment_rule_count()
-                if is_choice_rule(rule_ast):
+
+                if is_choice_rule(rule_ast) or is_disyunctive_head(rule_ast):
                     for cond_lit in rule_ast.head.elements:
                         false_rule = ast.Rule(
                             ast.Location(

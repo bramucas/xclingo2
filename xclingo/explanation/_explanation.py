@@ -1,10 +1,10 @@
 from typing import Iterable
 from clingo import Symbol
 
-class Explanation:
 
+class Explanation:
     @staticmethod
-    def from_model(symbols:Iterable[Symbol]):
+    def from_model(symbols: Iterable[Symbol]):
         table = dict()
         for s in symbols:
             parent = str(s.arguments[0])
@@ -16,16 +16,20 @@ class Explanation:
                 child_item = ExplanationNode()
                 table[child] = child_item
             child_item.add_label(str(s.arguments[2]).strip('"'))
-            
+
             if parent_item is None:
-                parent_item = ExplanationRoot(explanation_atoms=symbols) if parent == 'root' else ExplanationNode()
+                parent_item = (
+                    ExplanationRoot(explanation_atoms=symbols)
+                    if parent == "root"
+                    else ExplanationNode()
+                )
                 parent_item.add_cause(child_item)
                 table[parent] = parent_item
-            
+
             if child_item not in parent_item.causes:
                 parent_item.add_cause(child_item)
-        
-        return table['root']
+
+        return table["root"]
 
     @staticmethod
     def ascii_branch(level):
@@ -33,11 +37,11 @@ class Explanation:
             return "  |" * (level) + "__"
         else:
             return ""
-    
+
     def preorder_iterator(self):
         stack = [iter([self])]
         level = 0
-        while (stack):
+        while stack:
             try:
                 current = next(stack[-1])
                 yield (current, level)
@@ -60,23 +64,25 @@ class Explanation:
         if not isinstance(other, Explanation):
             return False
 
-        for (node1, level1), (node2, level2) in zip(self.preorder_iterator(), other.preorder_iterator()):
+        for (node1, level1), (node2, level2) in zip(
+            self.preorder_iterator(), other.preorder_iterator()
+        ):
             if not node1._node_equals(node2):
                 return False
 
-            if (level1 != level2):
+            if level1 != level2:
                 return False
-        
+
         return True
 
     def add_cause(self, cause):
         self.causes.append(cause)
 
     def add_label(self, label):
-        self.labels.append(label)
+        self.labels.add(label)
+
 
 class ExplanationRoot(Explanation):
-
     def __init__(self, causes=None, explanation_atoms=None):
         self.causes = list() if causes is None else causes
         self._explanation_atoms = explanation_atoms
@@ -90,17 +96,18 @@ class ExplanationRoot(Explanation):
 
         return True
 
+
 class ExplanationNode(Explanation):
     """
     A non-binary tree.
     """
 
     def __init__(self, labels=None, causes=None):
-        self.labels = list() if labels is None else labels
+        self.labels = set() if labels is None else labels
         self.causes = list() if causes is None else causes
 
     def get_node_text(self):
-        return ";".join(self.labels)
+        return ";".join(sorted(list(self.labels)))
 
     def _node_equals(self, other):
         if not isinstance(other, ExplanationNode):
