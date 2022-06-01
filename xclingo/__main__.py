@@ -1,6 +1,6 @@
 from xclingo import Explainer as Explainer
+from xclingo import XclingoControl
 from xclingo import __version__ as xclingo_version
-from clingo import Control
 from argparse import ArgumentParser, FileType
 import sys
 
@@ -34,28 +34,22 @@ def translate(program, auto_trace):
     translation += explainer._getExplainerLP(auto_trace=auto_trace)
     return translation   
 
-def print_explanation_atoms(control, explainer: Explainer):
-    with control.solve(yield_=True) as it:
-        nanswer=1
-        for m in it:
-            print(f'Answer {nanswer}')
-            print(' '.join([str(sym) for sym in m.symbols(shown=True)]))
-            nexpl=1
-            for xclingo_m in explainer.get_xclingo_models(m):
-                print(f'Explanation: {nexpl}')
-                print("\n".join([str(sym) for sym in xclingo_m.symbols(shown=True)]))
-                print()
-                nexpl+=1
-            nanswer+=1
+def print_explanation_atoms(xControl: XclingoControl):
+    n = 0
+    for xmodel in xControl.get_xclingo_models():
+        n += 1
+        print(f'Answer {n}')
+        print(xmodel)
 
-def print_text_explanations(control, explainer:Explainer):
-    with control.solve(yield_=True) as it:
-        nanswer=1
-        for m in it:
-            print(f'Answer {nanswer}')
-            for e in explainer.explain(m):
-                print(e.ascii_tree())
-            nanswer+=1
+def print_text_explanations(xControl: XclingoControl):
+    n = 0
+    for answer in xControl.explain():
+        n += 1
+        print(f'Answer {1}')
+        for expl in answer:
+            print(expl.ascii_tree())
+
+
 
 def main():
     args = check_options()
@@ -71,25 +65,21 @@ def main():
         print(translate(program, args.auto_tracing))
         return 0
 
-    control = Control([str(args.n[0])])
-    explainer = Explainer(
-        [
-            str(args.n[1]), 
-        ], 
-        auto_trace=args.auto_tracing
+    xControl = XclingoControl(
+        n_solutions=str(args.n[0]),
+        n_explanations=str(args.n[1]),
+        auto_trace=args.auto_tracing,
     )
 
     for file in args.infiles:
-        prog = file.read()
-        explainer.add(file.name, [], prog)
-        control.add("base", [], prog)
+        xControl.add("base", [], file.read())
 
-    control.ground([("base", [])])
+    xControl.ground()
 
     if args.only_explanation_atoms:
-        print_explanation_atoms(control, explainer)
+        print_explanation_atoms(xControl)
     else:
-        print_text_explanations(control, explainer)    
+        print_text_explanations(xControl)
 
 if __name__ == '__main__':
     main()

@@ -448,7 +448,7 @@ class TestPreprocessor:
                 ast.Sign.NoSign,
                 ast.SymbolicAtom(ast.Function(
                     loc,
-                    '_xclingo_f_atom',
+                    '_xclingo_model',
                     [
                         ast.Function(
                             loc,
