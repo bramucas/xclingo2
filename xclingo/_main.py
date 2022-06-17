@@ -47,13 +47,10 @@ class Explainer:
         self._show_trace = []
 
         self._no_labels = False
-        self._no_show_trace = False
 
     def logger(self, _code, msg):
         if _code == MessageCode.AtomUndefined:
-            if "xclingo_muted(Cause)" in msg:
-                return
-            if "_xclingo_label_tree/3" in msg:
+            if "xclingo_muted" in msg:
                 return
             if "_xclingo_label" in msg:
                 self._no_labels = True
@@ -65,12 +62,8 @@ class Explainer:
     def print_messages(self):
         if self._no_labels:
             print("xclingo info: any atom or rule has been labelled.")
-        if self._no_show_trace:
+        if self._show_trace == []:
             print("xclingo info: any atom has been affected by a %!show_trace annotation.")
-
-    def clean_log(self):
-        self._no_labels = False
-        self._no_show_trace = False
 
     ###############################
     def _getExplainerLP(self, auto_trace="none"):
@@ -99,6 +92,7 @@ class Explainer:
         self._memory.append((program_name, program))
 
     def _initialize_control(self):
+        self._no_labels = False
         return Control(self._internal_control_arguments + ["--project=project"], logger=self.logger)
 
     def _translate_program(self):
@@ -114,10 +108,11 @@ class Explainer:
             model (_type_): _description_
             context (_type_, optional): _description_. Defaults to None.
         """
+        # Translates the original program
         if not self._translated:
             self._translate_program()
-            self._translated
 
+        #
         with ProgramBuilder(control) as builder:
             parse_string(
                 self._getExplainerLP(auto_trace=self._auto_trace)
@@ -139,7 +134,6 @@ class Explainer:
 
     def _compute_graphs(self, model: Model, context=None) -> Sequence[ExplanationGraphModel]:
         control = self._initialize_control()
-        self.clean_log()
         self._ground(control, model, context)
         self.print_messages()
         with control.solve(yield_=True) as it:

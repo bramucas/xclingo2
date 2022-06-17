@@ -17,18 +17,14 @@ def check_options():
         help="Prints the version and exists.",
     )
     optional_group = parser.add_mutually_exclusive_group()
-    optional_group.add_argument(
-        "--only-translate", action="store_true", help="Prints the internal translation and exits."
-    )
-    optional_group.add_argument(
-        "--only-translate-annotations",
-        action="store_true",
-        help="Prints the internal translation and exits.",
-    )
-    optional_group.add_argument(
-        "--only-explanation-atoms",
-        action="store_true",
-        help="Prints the atoms used by the explainer to build the explanations.",
+    optional_group = parser.add_argument(
+        "--out",
+        type=str,
+        choices=["ascii-trees", "translation", "graph-facts", "annotations-translation"],
+        default="ascii-trees",
+        help="""Determines the format of the output. "translation" will output the translation 
+        together with the xclingo logic program. "graph-facts" will output the explanation 
+        graphs following clingraph format.""",
     )
     parser.add_argument(
         "--auto-tracing",
@@ -97,14 +93,13 @@ def print_text_explanations(xControl: XclingoControl):
 def main():
     args = check_options()
 
-    if args.only_translate_annotations:
+    if args.out == "annotations-translation":
         program = read_files(args.infiles)
         from xclingo.preprocessor import Preprocessor
 
         print(Preprocessor.translate_annotations(program))
         return 0
-
-    if args.only_translate:
+    elif args.out == "translation":
         program = read_files(args.infiles)
         print(translate(program, args.auto_tracing))
         return 0
@@ -120,7 +115,7 @@ def main():
 
     xControl.ground()
 
-    if args.only_explanation_atoms:
+    if args.out == "graph-facts":
         print_explanation_atoms(xControl)
     else:
         print_text_explanations(xControl)

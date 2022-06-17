@@ -27,8 +27,8 @@ _xclingo_edge((Caused, Cause), complete_explanation) :-
 % Compressing graph
 _xclingo_marked(X) :- _xclingo_node(X, complete_explanation), _xclingo_label(X, _).
 %
-_xclingo_skip(X, Y) :- _xclingo_edge((X, Y), complete_explanation), not _xclingo_marked(X, _).
-_xclingo_skip(X, Y) :- _xclingo_edge((X, Y), complete_explanation), not _xclingo_marked(Y, _).
+_xclingo_skip(X, Y) :- _xclingo_edge((X, Y), complete_explanation), not _xclingo_marked(X).
+_xclingo_skip(X, Y) :- _xclingo_edge((X, Y), complete_explanation), not _xclingo_marked(Y).
 %
 _xclingo_reach(X, Z) :- _xclingo_skip(X, Z).
 _xclingo_reach(X, Z) :- _xclingo_reach(X, Y), _xclingo_skip(Y, Z), not _xclingo_marked(Y).
@@ -38,7 +38,7 @@ _xclingo_reach(X, Z) :- _xclingo_reach(X, Y), _xclingo_skip(Y, Z), not _xclingo_
 _xclingo_graph(explanation).
 _xclingo_edge((Caused, Cause), explanation) :- _xclingo_edge((Caused, Cause), complete_explanation), not _xclingo_skip(Caused, Cause).
 _xclingo_edge((Caused, Cause), explanation) :- _xclingo_reach(Caused, Cause), _xclingo_marked(Caused), _xclingo_marked(Cause).
-_xclingo_node(Caused, explanation; Cause, explanation) :- _xclingo_edge((Caused, Cause), explanation).
+_xclingo_node(Caused, explanation) :- _xclingo_marked(Caused).
 
 _xclingo_attr(node, Atom, label, Label) :- _xclingo_label(Atom, Label), _xclingo_node(Atom, complete_explanation).
 
