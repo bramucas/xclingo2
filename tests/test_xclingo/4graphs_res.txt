@@ -1,0 +1,42 @@
+Answer: 1
+a p b q c
+##Explanation: 1
+  *
+  |__p
+  |  |__b
+
+  *
+  |__q
+  |  |__p
+  |  |  |__b
+
+##Explanation: 2
+  *
+  |__p
+  |  |__b
+
+  *
+  |__q
+  |  |__c
+
+##Explanation: 3
+  *
+  |__p
+  |  |__a
+
+  *
+  |__q
+  |  |__p
+  |  |  |__a
+
+##Explanation: 4
+  *
+  |__p
+  |  |__a
+
+  *
+  |__q
+  |  |__c
+
+##Total Explanations:	4
+Models:	1

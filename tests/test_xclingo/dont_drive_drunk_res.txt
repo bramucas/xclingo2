@@ -1,0 +1,21 @@
+Answer: 1
+sentence(clare,innocent) sentence(gabriel,prison)
+##Explanation: 1
+  *
+  |__"clare is innocent by default"
+
+  *
+  |__"gabriel goes to prison"
+  |  |__"gabriel resisted to authority"
+
+##Explanation: 2
+  *
+  |__"clare is innocent by default"
+
+  *
+  |__"gabriel goes to prison"
+  |  |__"gabriel drove drunk"
+  |  |  |__"gabriel alcohol's level is 40";"gabriel was drunk"
+
+##Total Explanations:	2
+Models:	1
