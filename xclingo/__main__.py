@@ -88,7 +88,9 @@ def print_text_explanations(xControl: XclingoControl):
             nexpl += 1
             print(f"##Explanation: {nexpl}")
             for sym in xControl.explainer._show_trace:
-                print(graphModel.explain(sym))
+                e = graphModel.explain(sym)
+                if e is not None:
+                    print(e)
         print(f"##Total Explanations:\t{nexpl}")
 
 

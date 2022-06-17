@@ -260,7 +260,7 @@ class Preprocessor:
             ast.SymbolicAtom(
                 ast.Function(
                     loc,
-                    "_xclingo_intree",
+                    "_xclingo_f_atom",
                     [rule_ast.head.atom.symbol.arguments[0]],
                     False,
                 )
