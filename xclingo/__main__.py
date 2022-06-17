@@ -94,6 +94,7 @@ def print_text_explanations(xControl: XclingoControl):
                 if e is not None:
                     print(e)
         print(f"##Total Explanations:\t{nexpl}")
+    print(f"Models:\t{nmodel}")
 
 
 def print_clingraph_facts(xControl: XclingoControl):

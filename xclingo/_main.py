@@ -141,6 +141,7 @@ class Explainer:
                 lambda ast: builder.add(ast),
             )
 
+        # TODO: as externals?
         with control.backend() as backend:
             for sym in model.symbols(atoms=True):
                 atm_id = backend.add_atom(Function("_xclingo_model", [sym], True))
@@ -224,15 +225,18 @@ class XclingoControl:
     def _default_output(self):
         output = ""
         nanswer = 0
-        for answer in self.explain():
+        for xModel in self.solve():
             nanswer += 1
             output += f"Answer: {nanswer}\n"
+            output += " ".join(map(str, xModel.symbols(shown=True))) + "\n"
             nexpl = 0
-            for explanation in answer.explain():
+            for graphModel in xModel.explain_model():
                 nexpl += 1
-                output += f"*Explanation: {nexpl}\n"
-                output += "\n".join([expl.ascii_tree() for expl in answer])
+                output += f"##Explanation: {nexpl}\n"
+                output += "\n".join(
+                    [graphModel.explain(s).ascii_tree() for s in self.explainer._show_trace]
+                )
                 output += "\n"
-            output += f"Total explanations: {nexpl}\n"
-        output += f"Models: {nanswer}"
+            output += f"##Total Explanations:\t{nexpl}\n"
+        output += f"Models:\t{nanswer}\n"
         return output
