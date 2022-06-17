@@ -734,7 +734,7 @@ class TestPreprocessor:
 
     def test_sup_body(self, custom_body, expected_sup_body):
         preprocessor = Preprocessor()
-        assert expected_sup_body == list(preprocessor.sup_body(custom_body))
+        assert expected_sup_body == list(preprocessor._sup_body(custom_body))
 
     def test_sup_rule(self, custom_rule, expected_support_rule):
         rule_id, expected = expected_support_rule
@@ -744,7 +744,7 @@ class TestPreprocessor:
 
     def test_fbody_body(self, custom_body, expected_fbody_body):
         preprocessor = Preprocessor()
-        body = list(preprocessor.fbody_body(custom_body))
+        body = list(preprocessor._fbody_body(custom_body))
         assert expected_fbody_body == body
 
     def test_fbody_rule(self, custom_rule, expected_fbody_rule):
