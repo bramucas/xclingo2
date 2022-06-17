@@ -34,19 +34,60 @@ class Context:
             return Function("empty", [], True)
 
 
+class LPLoader:
+    def __init__(self, auto_trace: str = "none", graphs: str = "xclingo"):
+        self.auto_trace = auto_trace
+        self.graphs = graphs
+
+    def _getExplainerLP(self):
+        if hasattr(self, "_explainerLP") == False:
+            setattr(self, "_explainerLP", self._loadExplainerLP())
+        return self._explainerLP
+
+    def _loadExplainerLP(self):
+        try:
+            import importlib.resources as pkg_resources
+        except ImportError:
+            # Try backported to PY<37 `importlib_resources`.
+            import importlib_resources as pkg_resources
+
+        from . import xclingo_lp
+
+        program = ""
+        program += pkg_resources.read_text(xclingo_lp, "xclingo_fired.lp")
+        program += pkg_resources.read_text(xclingo_lp, "xclingo_graph.lp")
+        if self.graphs == "xclingo":
+            program += pkg_resources.read_text(xclingo_lp, "xclingo_show.lp")
+        elif self.graphs == "clingraph":
+            program += pkg_resources.read_text(xclingo_lp, "clingraph_graphs.lp")
+            program += pkg_resources.read_text(xclingo_lp, "clingraph_show.lp")
+
+        # auto-tracing
+        if self.auto_trace == "all":
+            program += pkg_resources.read_text(xclingo_lp, "autotrace_all.lp")
+        elif self.auto_trace == "facts":
+            program += pkg_resources.read_text(xclingo_lp, "autotrace_facts.lp")
+        return program
+
+
 class Explainer:
-    def __init__(self, internal_control_arguments=["1"], auto_trace="none"):
+    def __init__(
+        self, internal_control_arguments=["1"], auto_trace="none", graph_models_format="xclingo"
+    ):
         self._preprocessor = Preprocessor()
         self._memory = []
 
         self._internal_control_arguments = internal_control_arguments
         self._auto_trace = auto_trace
+        self._graph_models_format = graph_models_format
         self._translated = False
         self._current_model = []
 
         self._show_trace = []
 
         self._no_labels = False
+
+        self._lp_loader = LPLoader(auto_trace=auto_trace, graphs=graph_models_format)
 
     def logger(self, _code, msg):
         if _code == MessageCode.AtomUndefined:
@@ -65,35 +106,16 @@ class Explainer:
         if self._show_trace == []:
             print("xclingo info: any atom has been affected by a %!show_trace annotation.")
 
-    ###############################
-    def _getExplainerLP(self, auto_trace="none"):
-        if hasattr(self, "_explainerLP") == False:
-            setattr(self, "_explainerLP", self._loadExplainerLP(auto_trace))
-        return self._explainerLP
-
-    def _loadExplainerLP(self, auto_trace="none"):
-        try:
-            import importlib.resources as pkg_resources
-        except ImportError:
-            # Try backported to PY<37 `importlib_resources`.
-            import importlib_resources as pkg_resources
-
-        from . import xclingo_lp  # relative-import the *package* containing the templates
-
-        program = pkg_resources.read_text(xclingo_lp, "xclingo.lp")
-        if auto_trace == "all":
-            program += pkg_resources.read_text(xclingo_lp, "autotrace_all.lp")
-        elif auto_trace == "facts":
-            program += pkg_resources.read_text(xclingo_lp, "autotrace_facts.lp")
-        return program
-
-    ################################
     def add(self, program_name: str, parameters: Sequence[str], program: str):
         self._memory.append((program_name, program))
 
     def _initialize_control(self):
         self._no_labels = False
-        return Control(self._internal_control_arguments + ["--project=project"], logger=self.logger)
+        project = ["--project=project"] if self._graph_models_format == "xclingo" else []
+        return Control(
+            self._internal_control_arguments + project,
+            logger=self.logger,
+        )
 
     def _translate_program(self):
         self._preprocessor._rule_count = 1
@@ -115,8 +137,7 @@ class Explainer:
         #
         with ProgramBuilder(control) as builder:
             parse_string(
-                self._getExplainerLP(auto_trace=self._auto_trace)
-                + self._preprocessor.get_translation(),
+                self._lp_loader._getExplainerLP() + self._preprocessor.get_translation(),
                 lambda ast: builder.add(ast),
             )
 
@@ -151,7 +172,9 @@ class XClingoModel(Model):
 
 
 class XclingoControl:
-    def __init__(self, n_solutions="1", n_explanations="1", auto_trace="none"):
+    def __init__(
+        self, n_solutions="1", n_explanations="1", auto_trace="none", graph_models_format="xclingo"
+    ):
         self.n_solutions = n_solutions
         self.n_explanations = n_explanations
 
@@ -161,6 +184,7 @@ class XclingoControl:
                 n_explanations if type(n_explanations) == str else str(n_explanations),
             ],
             auto_trace=auto_trace,
+            graph_models_format=graph_models_format,
         )
 
         self._explainer_context = None

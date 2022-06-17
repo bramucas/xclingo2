@@ -20,10 +20,16 @@ def check_options():
     optional_group = parser.add_argument(
         "--out",
         type=str,
-        choices=["ascii-trees", "translation", "graph-facts", "annotations-translation"],
+        choices=[
+            "ascii-trees",
+            "translation",
+            "graph-models",
+            "clingraph",
+            "annotations-translation",
+        ],
         default="ascii-trees",
         help="""Determines the format of the output. "translation" will output the translation 
-        together with the xclingo logic program. "graph-facts" will output the explanation 
+        together with the xclingo logic program. "graph-models" will output the explanation 
         graphs following clingraph format.""",
     )
     parser.add_argument(
@@ -50,12 +56,12 @@ def read_files(files):
     return "\n".join([file.read() for file in files])
 
 
-def translate(program, auto_trace):
-    explainer = Explainer(auto_trace=auto_trace)
+def translate(program, auto_trace, graph_models_format):
+    explainer = Explainer(auto_trace=auto_trace, graph_models_format=graph_models_format)
     explainer.add("base", [], program)
     explainer._translate_program()
     translation = explainer._preprocessor.get_translation()
-    translation += explainer._getExplainerLP(auto_trace=auto_trace)
+    translation += explainer._lp_loader._getExplainerLP()
     return translation
 
 
@@ -90,6 +96,10 @@ def print_text_explanations(xControl: XclingoControl):
         print(f"##Total Explanations:\t{nexpl}")
 
 
+def print_clingraph_facts(xControl: XclingoControl):
+    raise RuntimeError("Not implemented yet")
+
+
 def main():
     args = check_options()
 
@@ -101,13 +111,18 @@ def main():
         return 0
     elif args.out == "translation":
         program = read_files(args.infiles)
-        print(translate(program, args.auto_tracing))
+        print(
+            translate(
+                program, args.auto_tracing, "xclingo" if args.out != "clingraph" else "clingraph"
+            )
+        )
         return 0
 
     xControl = XclingoControl(
         n_solutions=str(args.n[0]),
         n_explanations=str(args.n[1]),
         auto_trace=args.auto_tracing,
+        graph_models_format="xclingo" if args.out != "clingraph" else "clingraph",
     )
 
     for file in args.infiles:
@@ -115,8 +130,10 @@ def main():
 
     xControl.ground()
 
-    if args.out == "graph-facts":
+    if args.out in {"graph-models", "clingraph"}:
         print_explanation_atoms(xControl)
+    elif args.out == "clingraph":
+        print_clingraph_facts(xControl)
     else:
         print_text_explanations(xControl)
 
