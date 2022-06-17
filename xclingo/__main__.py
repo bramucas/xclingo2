@@ -4,51 +4,92 @@ from xclingo import __version__ as xclingo_version
 from argparse import ArgumentParser, FileType
 import sys
 
+
 def check_options():
     # Handles arguments of xclingo
-    parser = ArgumentParser(description='Tool for explaining (and debugging) ASP programs', prog='xclingo')
-    parser.add_argument('--version', action='version',
-                        version='xclingo {version}'.format(version=xclingo_version),
-                        help='Prints the version and exists.')
+    parser = ArgumentParser(
+        description="Tool for explaining (and debugging) ASP programs", prog="xclingo"
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version="xclingo {version}".format(version=xclingo_version),
+        help="Prints the version and exists.",
+    )
     optional_group = parser.add_mutually_exclusive_group()
-    optional_group.add_argument('--only-translate', action='store_true',
-                        help="Prints the internal translation and exits.")
-    optional_group.add_argument('--only-translate-annotations', action='store_true',
-                        help="Prints the internal translation and exits.")
-    optional_group.add_argument('--only-explanation-atoms', action='store_true',
-                        help="Prints the atoms used by the explainer to build the explanations.")
-    parser.add_argument('--auto-tracing', type=str, choices=["none", "facts", "all"], default="none",
-                        help="Automatically creates traces for the rules of the program. Default: none.")
-    parser.add_argument('-n', nargs=2, default=(1,1), type=int, help="Number of answer sets and number of desired explanations.")
-    parser.add_argument('infiles', nargs='+', type=FileType('r'), default=sys.stdin, help="ASP program")
+    optional_group.add_argument(
+        "--only-translate", action="store_true", help="Prints the internal translation and exits."
+    )
+    optional_group.add_argument(
+        "--only-translate-annotations",
+        action="store_true",
+        help="Prints the internal translation and exits.",
+    )
+    optional_group.add_argument(
+        "--only-explanation-atoms",
+        action="store_true",
+        help="Prints the atoms used by the explainer to build the explanations.",
+    )
+    parser.add_argument(
+        "--auto-tracing",
+        type=str,
+        choices=["none", "facts", "all"],
+        default="none",
+        help="Automatically creates traces for the rules of the program. Default: none.",
+    )
+    parser.add_argument(
+        "-n",
+        nargs=2,
+        default=(1, 1),
+        type=int,
+        help="Number of answer sets and number of desired explanations.",
+    )
+    parser.add_argument(
+        "infiles", nargs="+", type=FileType("r"), default=sys.stdin, help="ASP program"
+    )
     return parser.parse_args()
+
 
 def read_files(files):
     return "\n".join([file.read() for file in files])
 
+
 def translate(program, auto_trace):
     explainer = Explainer(auto_trace=auto_trace)
-    explainer.add('base', [], program)
+    explainer.add("base", [], program)
     explainer._translate_program()
-    translation =  explainer._preprocessor.get_translation()
+    translation = explainer._preprocessor.get_translation()
     translation += explainer._getExplainerLP(auto_trace=auto_trace)
-    return translation   
+    return translation
+
 
 def print_explanation_atoms(xControl: XclingoControl):
-    n = 0
-    for xmodel in xControl.get_xclingo_models():
-        n += 1
-        print(f'Answer {n}')
+    nmodel = 0
+    for xmodel in xControl.solve():
+        nmodel += 1
+        print(f"Answer: {nmodel}")
         print(xmodel)
+        nexpl = 0
+        for graphModel in xmodel.explain_model():
+            nexpl += 1
+            print(f"##Explanation: {nexpl}")
+            print(graphModel)
+        print(f"##Total Explanations:\t{nexpl}")
+
 
 def print_text_explanations(xControl: XclingoControl):
-    n = 0
-    for answer in xControl.explain():
-        n += 1
-        print(f'Answer {1}')
-        for expl in answer:
-            print(expl.ascii_tree())
-
+    nmodel = 0
+    for xmodel in xControl.solve():
+        nmodel += 1
+        print(f"Answer: {nmodel}")
+        print(xmodel)
+        nexpl = 0
+        for graphModel in xmodel.explain_model():
+            nexpl += 1
+            print(f"##Explanation: {nexpl}")
+            for sym in xControl.explainer._show_trace:
+                print(graphModel.explain(sym))
+        print(f"##Total Explanations:\t{nexpl}")
 
 
 def main():
@@ -57,6 +98,7 @@ def main():
     if args.only_translate_annotations:
         program = read_files(args.infiles)
         from xclingo.preprocessor import Preprocessor
+
         print(Preprocessor.translate_annotations(program))
         return 0
 
@@ -81,5 +123,6 @@ def main():
     else:
         print_text_explanations(xControl)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
