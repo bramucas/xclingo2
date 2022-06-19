@@ -2,10 +2,10 @@ from clingo.symbol import Number
 import pytest
 import clingo.ast as ast
 from clingo import Number, String
-from xclingo.preprocessor import Preprocessor
+from xclingo.preprocessor import XClingoPreprocessor
 
 
-class TestPreprocessor:
+class TestXClingoPreprocessor:
     @pytest.fixture(scope="class")
     def custom_body(self):
         loc = ast.Location(ast.Position("", 0, 0), ast.Position("", 0, 0))
@@ -729,42 +729,42 @@ class TestPreprocessor:
         return rule
 
     def test_propagates(self, custom_body, expected_propagates):
-        preprocessor = Preprocessor()
+        preprocessor = XClingoPreprocessor()
         assert expected_propagates == list(preprocessor.propagates(custom_body))
 
     def test_sup_body(self, custom_body, expected_sup_body):
-        preprocessor = Preprocessor()
+        preprocessor = XClingoPreprocessor()
         assert expected_sup_body == list(preprocessor._sup_body(custom_body))
 
     def test_sup_rule(self, custom_rule, expected_support_rule):
         rule_id, expected = expected_support_rule
-        preprocessor = Preprocessor()
+        preprocessor = XClingoPreprocessor()
         support_rule = preprocessor.support_rule(rule_id, custom_rule)
         assert expected == support_rule
 
     def test_fbody_body(self, custom_body, expected_fbody_body):
-        preprocessor = Preprocessor()
+        preprocessor = XClingoPreprocessor()
         body = list(preprocessor._fbody_body(custom_body))
         assert expected_fbody_body == body
 
     def test_fbody_rule(self, custom_rule, expected_fbody_rule):
-        preprocessor = Preprocessor()
+        preprocessor = XClingoPreprocessor()
         rule_id, expected = expected_fbody_rule
         rule = preprocessor.fbody_rule(rule_id, custom_rule)
         assert expected == rule
 
     def test_label_rule(self, custom_label_rule, expected_label_rule, custom_body):
-        preprocessor = Preprocessor()
+        preprocessor = XClingoPreprocessor()
         rule_id, expected = expected_label_rule
         rule = preprocessor.label_rule(rule_id, custom_label_rule, custom_body)
         assert expected == rule
 
     def test_label_atom(self, custom_label_atom, expected_label_atom):
-        preprocessor = Preprocessor()
+        preprocessor = XClingoPreprocessor()
         rule = preprocessor.label_atom(custom_label_atom)
         assert expected_label_atom == rule
 
     def test_show_trace(self, custom_show_trace, expected_show_trace):
-        preprocessor = Preprocessor()
+        preprocessor = XClingoPreprocessor()
         rule = preprocessor.show_trace(custom_show_trace)
         assert expected_show_trace == rule

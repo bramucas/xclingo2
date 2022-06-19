@@ -6,7 +6,8 @@ sentence(clare,innocent) sentence(gabriel,prison)
 
   *
   |__"gabriel goes to prison"
-  |  |__"gabriel resisted to authority"
+  |  |__"gabriel drove drunk"
+  |  |  |__"gabriel alcohol's level is 40";"gabriel was drunk"
 
 ##Explanation: 2
   *
@@ -14,8 +15,7 @@ sentence(clare,innocent) sentence(gabriel,prison)
 
   *
   |__"gabriel goes to prison"
-  |  |__"gabriel drove drunk"
-  |  |  |__"gabriel alcohol's level is 40";"gabriel was drunk"
+  |  |__"gabriel resisted to authority"
 
 ##Total Explanations:	2
 Models:	1

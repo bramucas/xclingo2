@@ -1,11 +1,7 @@
-from typing import Iterable
+from typing import Callable, Iterable, Sequence
 from clingo import ast
 from clingo.symbol import Number
 from ._utils import (
-    translate_show_all,
-    translate_trace,
-    translate_trace_all,
-    translate_mute,
     is_xclingo_label,
     is_xclingo_show_trace,
     is_choice_rule,
@@ -16,33 +12,24 @@ from ._utils import (
 )
 
 
-class ConstraintRelaxer:
-    """Relaxes the constraints in the program. This is, traced constraints become rules with special
-    heads.
-
-    Created heads have the form: xclingo_violated_constraint(<number>). This number ID is
-    independent from the number of rules in the program.
-    """
-
-    def __init__(self):
-        self._constraint_count = 1
-        self._lits = []
-        self.there_is_a_label = False
+class Preprocessor:
+    def __init__(self) -> None:
         self._translation = ""
 
-    def _increment_constraint_count(self):
-        """Returns the current ID for constraints and increment the internal counter."""
-        n = self._constraint_count
-        self._constraint_count += 1
-        return n
+    def reset(self) -> None:
+        self._translation = ""
 
-    def _add_to_translation(self, rule_ast: ast.AST):
+    def preprocess_rule(self, rule_ast: ast.AST) -> Sequence[ast.AST]:
+        raise RuntimeError("This method is intended to be override")
+
+    def _add_to_translation(self, rule_asts: Sequence[ast.AST]):
         """Adds the given rule to the internal translation.
 
         Args:
             rule_ast (ast.AST): the rule to add to the translation.
         """
-        self._translation += f"{rule_ast}\n"
+        for ra in rule_asts:
+            self._translation += f"{ra}\n"
 
     def _add_comment_to_translation(self, comment: str):
         """Adds a comment to the internal translation.
@@ -52,7 +39,66 @@ class ConstraintRelaxer:
         """
         self._translation += f"% {comment}\n"
 
-    def relax_labelled_constraint(self, rule_ast: ast.AST):
+    def process_program(self, program: str):
+        """Translates a given program into its xclingo translation. The translation starts with a comment containing the program name.
+
+        Args:
+            program (str): program to be translated.
+            name (str, optional): Defaults to "".
+        """
+        self._translation = ""
+        ast.parse_string(
+            program,
+            lambda ast: self._add_to_translation(self.preprocess_rule(ast)),
+        )
+        return self._translation
+
+
+class XClingoAnnotationPreprocessor(Preprocessor):
+    def __init__(self, func: Callable) -> None:
+        super().__init__()
+        self.func = func
+
+    def reset(self) -> None:
+        super().reset()
+
+    def preprocess_rule(self, rule_ast: ast.AST) -> None:
+        pass
+
+    def process_program(self, program: str):
+        self._translation = ""
+        self._translation += self.func(program)
+        return self._translation
+
+
+class ConstraintRelaxer(Preprocessor):
+    """Relaxes the constraints in the program. This is, traced constraints become rules with special
+    heads.
+
+    Created heads have the form: xclingo_violated_constraint(<number>). This number ID is
+    independent from the number of rules in the program.
+    """
+
+    def __init__(self, preserve_labels=False):
+        super().__init__()
+        self._constraint_count = 1
+        self._lits = []
+        self.there_is_a_label = False
+        self.preserve_labels = preserve_labels
+
+    def reset(self):
+        super().reset()
+        self._constraint_count = 1
+        self._lits = []
+        self.there_is_a_label = False
+
+    def _increment_constraint_count(self):
+        """Returns the current ID for constraints and increment the internal counter."""
+        n = self._constraint_count
+        self._constraint_count += 1
+        return n
+
+    def preprocess_rule(self, rule_ast: ast.AST):
         """Preprocess the given rule and adds the result to the translation.
 
         Labelled constraints are transformed into their relaxed form. The rest of the program is
@@ -64,6 +110,8 @@ class ConstraintRelaxer:
         # if there is a label, self.there_is_a_label is set to True but it's not used
         if is_xclingo_label(rule_ast):
             self.there_is_a_label = True
+            if self.preserve_labels:
+                yield rule_ast
         else:
             if rule_ast.ast_type == ast.ASTType.Rule:
                 rule_id = self._increment_constraint_count()
@@ -85,7 +133,10 @@ class ConstraintRelaxer:
                                 [
                                     ast.SymbolicTerm(loc, Number(rule_id)),
                                     ast.Function(
-                                        loc, "", list(Preprocessor.propagates(rule_ast.body)), False
+                                        loc,
+                                        "",
+                                        list(XClingoPreprocessor.propagates(rule_ast.body)),
+                                        False,
                                     ),  # tuple
                                 ],
                                 False,
@@ -95,26 +146,11 @@ class ConstraintRelaxer:
                     body=rule_ast.body,
                 )
                 rule_ast = new_rule
-            self._add_to_translation(rule_ast)
             self.there_is_a_label = False
-
-    def preprocess(self, program: str):
-        """Preprocess the given program and stores the result in the internal translation.
-
-        Args:
-            program (str): the program to be preprocessed.
-        """
-        ast.parse_string(
-            translate_trace(program),
-            lambda ast: self.relax_labelled_constraint(ast),
-        )
-
-    def get_translation(self):
-        """Returns the internal translation."""
-        return self._translation
+            yield rule_ast
 
 
-class Preprocessor:
+class XClingoPreprocessor(Preprocessor):
     """Translates a given program into the xclingo format.
 
     For every original rule ID is given and the following happens:
@@ -134,20 +170,20 @@ class Preprocessor:
     """
 
     def __init__(self):
+        super().__init__()
         self._rule_count = 1
         self._last_trace_rule = None
-        self._translation = ""
+
+    def reset(self):
+        super().reset()
+        self._rule_count = 1
+        self._last_trace_rule = None
 
     def _increment_rule_count(self):
         """Returns the current ID for rules and increment the internal counter."""
         n = self._rule_count
         self._rule_count += 1
         return n
-
-    @staticmethod
-    def _translate_annotations(program):
-        """Translates the xclingo annotations in the program into a preliminary form of xclingo rules."""
-        return translate_trace_all(translate_show_all(translate_trace(translate_mute(program))))
 
     @staticmethod
     def propagates(lit_list: Iterable[ast.AST]):
@@ -245,7 +281,7 @@ class Preprocessor:
                         ast.SymbolicTerm(loc, Number(rule_id)),
                         rule_ast.head.atom,
                         ast.Function(
-                            loc, "", list(Preprocessor.propagates(rule_ast.body)), False
+                            loc, "", list(XClingoPreprocessor.propagates(rule_ast.body)), False
                         ),  # tuple
                     ],
                     False,
@@ -298,7 +334,7 @@ class Preprocessor:
                         ast.SymbolicTerm(loc, Number(rule_id)),
                         rule_ast.head.atom,
                         ast.Function(
-                            loc, "", list(Preprocessor.propagates(rule_ast.body)), False
+                            loc, "", list(XClingoPreprocessor.propagates(rule_ast.body)), False
                         ),  # tuple
                     ],
                     False,
@@ -440,7 +476,7 @@ class Preprocessor:
                             ast.Function(
                                 loc,
                                 "",
-                                list(Preprocessor.propagates(rule_body)),
+                                list(XClingoPreprocessor.propagates(rule_body)),
                                 False,
                             ),
                         ],
@@ -527,23 +563,7 @@ class Preprocessor:
         )
         return rule
 
-    def add_to_translation(self, some_ast: ast.AST):
-        """Adds an AST to the translation.
-
-        Args:
-            ast (ast.AST): an AST to be added.
-        """
-        self._translation += f"{some_ast}\n"
-
-    def add_comment_to_translation(self, comment: object):
-        """Adds a comment to the translation.
-
-        Args:
-            comment (object): a comment to be added.
-        """
-        self._translation += f"% {comment}\n"
-
-    def translate_rule(self, rule_ast: ast.ASTType.Rule):
+    def preprocess_rule(self, rule_ast: ast.ASTType.Rule):
         """Translates a given rule into its xclingo translation and adds it to the translation.
         Before every addition, a comment containing the original rule is also added.
 
@@ -552,18 +572,18 @@ class Preprocessor:
         Args:
             rule_ast (ast.ASTType.Rule): rule to be translated.
         """
-        self.add_comment_to_translation(rule_ast)
+        self._add_comment_to_translation(rule_ast)
         if rule_ast.ast_type == ast.ASTType.Rule:
             if is_xclingo_label(rule_ast):
                 if is_label_rule(rule_ast):
                     self._last_trace_rule = rule_ast
                     return
                 # if it is label atom
-                self.add_to_translation(self.label_atom(rule_ast))
+                yield self.label_atom(rule_ast)
             elif is_xclingo_show_trace(rule_ast):
-                self.add_to_translation(self.show_trace(rule_ast))
+                yield self.show_trace(rule_ast)
             elif is_xclingo_mute(rule_ast):
-                self.add_to_translation(self.mute(rule_ast))
+                yield self.mute(rule_ast)
             else:
                 rule_id = self._increment_rule_count()
 
@@ -577,8 +597,8 @@ class Preprocessor:
                             cond_lit.literal,
                             list(cond_lit.condition) + list(rule_ast.body),
                         )
-                        self.add_to_translation(self.support_rule(rule_id, false_rule))
-                        self.add_to_translation(self.fbody_rule(rule_id, false_rule))
+                        yield self.support_rule(rule_id, false_rule)
+                        yield self.fbody_rule(rule_id, false_rule)
                         if self._last_trace_rule is not None:
                             self.add_to_translation(
                                 self.label_rule(rule_id, self._last_trace_rule, false_rule.body)
@@ -594,7 +614,10 @@ class Preprocessor:
                             [
                                 ast.SymbolicTerm(loc, Number(rule_id)),
                                 ast.Function(
-                                    loc, "", list(Preprocessor.propagates(rule_ast.body)), False
+                                    loc,
+                                    "",
+                                    list(XClingoPreprocessor.propagates(rule_ast.body)),
+                                    False,
                                 ),  # tuple
                             ],
                             False,
@@ -610,34 +633,14 @@ class Preprocessor:
                         false_head,
                         rule_ast.body,
                     )
-                    self.add_to_translation(self.support_rule(rule_id, false_rule))
-                    self.add_to_translation(self.fbody_rule(rule_id, false_rule))
-                    self.add_to_translation(
-                        self.label_rule(rule_id, self._last_trace_rule, false_rule.body)
-                    )
+                    yield self.support_rule(rule_id, false_rule)
+                    yield self.fbody_rule(rule_id, false_rule)
+                    yield self.label_rule(rule_id, self._last_trace_rule, false_rule.body)
+
                     self._last_trace_rule = None
                 else:  # Other cases
-                    self.add_to_translation(self.support_rule(rule_id, rule_ast))
-                    self.add_to_translation(self.fbody_rule(rule_id, rule_ast))
+                    yield self.support_rule(rule_id, rule_ast)
+                    yield self.fbody_rule(rule_id, rule_ast)
                     if self._last_trace_rule is not None:
-                        self.add_to_translation(
-                            self.label_rule(rule_id, self._last_trace_rule, rule_ast.body)
-                        )
+                        yield self.label_rule(rule_id, self._last_trace_rule, rule_ast.body)
                         self._last_trace_rule = None
-
-    def translate_program(self, program: str, name: str = ""):
-        """Translates a given program into its xclingo translation. The translation starts with a comment containing the program name.
-
-        Args:
-            program (str): program to be translated.
-            name (str, optional): Defaults to "".
-        """
-        self._translation += "%" * 8 + name + "%" * 8 + "\n"
-        ast.parse_string(
-            Preprocessor._translate_annotations(program),
-            lambda ast: self.translate_rule(ast),
-        )
-
-    def get_translation(self):
-        """Returns the translation so far."""
-        return self._translation
