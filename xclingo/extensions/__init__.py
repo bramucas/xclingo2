@@ -5,12 +5,5 @@ except ImportError:
     from importlib_resources import read_text
 
 
-class ExtensionLoader:
-    def __init__(self):
-        self.loaded = []
-
-    def loadLPExtension(self, name: str):
-        self.loaded.append(("base", read_text(__package__, resource=name)))
-
-    def get_loaded(self):
-        return self.loaded
+def load_xclingo_extension(extension_filename: str):
+    return read_text(__package__, resource=extension_filename)

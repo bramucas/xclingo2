@@ -1,5 +1,4 @@
-from typing import Type
-from typing import Iterable
+from typing import Type, Iterable
 from clingo import Symbol, Model
 from collections import defaultdict
 
@@ -7,25 +6,23 @@ from collections import defaultdict
 class ExplanationGraphModel(Model):
     def __init__(self, graph_model: Model):
         super().__init__(graph_model._rep)
-
-    @property
-    def table(self):
-        if not hasattr(self, "_table"):
-            table = defaultdict()
-            for s in self.symbols(shown=True):
-                if s.name == "_xclingo_attr":  # _xclingo_attr(node, Atom, label, Label)
-                    table.setdefault(s.arguments[1], Explanation(s.arguments[1]))
-                    table[s.arguments[1]].add_label(str(s.arguments[3]))
-                else:  # _xclingo_edge((Caused, Cause), explanation)
-                    caused, cause = s.arguments[0].arguments
-                    table.setdefault(caused, Explanation(caused))
-                    table.setdefault(cause, Explanation(cause))
-                    table[caused].add_cause(table[cause])
-            setattr(self, "_table", table)
-        return self._table
+        # Builds graph from model
+        self.show_trace = []
+        self.index = defaultdict()
+        for s in self.symbols(shown=True):
+            if len(s.arguments) == 1:  # _xclingo_show_trace(Atom)
+                self.show_trace.append(s.arguments[0])
+            elif len(s.arguments) == 2:  # _xclingo_edge((Caused, Cause), explanation)
+                caused, cause = s.arguments[0].arguments
+                self.index.setdefault(caused, Explanation(caused))
+                self.index.setdefault(cause, Explanation(cause))
+                self.index[caused].add_cause(self.index[cause])
+            else:  # _xclingo_attr(node, Atom, label, Label)
+                self.index.setdefault(s.arguments[1], Explanation(s.arguments[1]))
+                self.index[s.arguments[1]].add_label(str(s.arguments[3]))
 
     def explain(self, symbol: Symbol):
-        return self.table.get(symbol, None)
+        return self.index.get(symbol, None)
 
 
 class Explanation:

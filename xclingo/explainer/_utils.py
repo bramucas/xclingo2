@@ -1,14 +1,6 @@
 from clingo import Function, String
 from clingo.symbol import SymbolType
 
-try:
-    from importlib.resources import read_text
-except ImportError:
-    # Try backported to PY<37 `importlib_resources`.
-    from importlib_resources import read_text
-
-from .. import xclingo_lp
-
 
 class XClingoContext:
     """Xclingo context class."""
@@ -37,17 +29,3 @@ class XClingoContext:
             ]
         else:
             return Function("empty", [], True)
-
-
-class LPLoader:
-    def __init__(self):
-        self.cache = None
-
-    def _loadExplainerLP(self):
-        if self.cache is None:
-            self.cache = (
-                read_text(xclingo_lp, "xclingo_fired.lp")
-                + read_text(xclingo_lp, "xclingo_graph.lp")
-                + read_text(xclingo_lp, "xclingo_show.lp")
-            )
-        return self.cache

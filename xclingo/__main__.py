@@ -1,42 +1,46 @@
-from os import read
 from typing import Sequence, TextIO
 from xclingo import XclingoControl
 from xclingo.preprocessor import (
     DefaultExplainingPipeline,
-    PreprocessorPipeline,
     ConstraintRelaxerPipeline,
 )
 
-from .extensions import ExtensionLoader
+from .extensions import load_xclingo_extension
 from ._args_handler import check_options, print_header
 
 
 def read_files(files: Sequence[TextIO]):
-    """Concats the content of bunch of files into a string.
-
-    Args:
-        files (Sequence[TextIO]): A bunch of files.
-
-    Returns:
-        str: the concat of all the input files.
-    """
     return "\n".join([file.read() for file in files])
 
 
-def try_solve_explain(args, programs, extension_loader, solving_pipeline=PreprocessorPipeline()):
-    xControl = XclingoControl(
-        n_solutions=str(args.n[0]),
+def _init_xclingo_control(
+    args, solving_preprocessor_pipeline=None, explaining_preprocessor_pipeline=None
+):
+    xclingo_control = XclingoControl(
+        [str(args.n[0])],
         n_explanations=str(args.n[1]),
-        lp_extensions=extension_loader.get_loaded(),
-        pre_solving_pipeline=solving_pipeline,
+        solving_preprocessor_pipeline=solving_preprocessor_pipeline,
+        explaining_preprocessor_pipeline=explaining_preprocessor_pipeline,
     )
 
-    xControl.add("base", [], programs)
-    xControl.ground()
+    if args.auto_tracing != "none":
+        xclingo_control.add_to_explainer(
+            "base", [], load_xclingo_extension(f"autotrace_{args.auto_tracing}.lp")
+        )
+    if args.out == "graph-models":
+        xclingo_control.add_to_explainer("base", [], load_xclingo_extension("graph_models_show.lp"))
 
+    programs = read_files(args.infiles)
+    xclingo_control.add("base", [], programs)
+    xclingo_control.ground([("base", [])])
+
+    return xclingo_control
+
+
+def solve_explain(args, xclingo_control):
     unsat = True
     nmodel = 0
-    for xmodel in xControl.solve():
+    for xmodel in xclingo_control.solve():
         unsat = False
         nmodel += 1
         print(f"Answer: {nmodel}")
@@ -44,11 +48,11 @@ def try_solve_explain(args, programs, extension_loader, solving_pipeline=Preproc
         nexpl = 0
         for graphModel in xmodel.explain_model():
             nexpl += 1
-            print(f"##Explanation: {nexpl}")
+            print(f"##Explanation: {nmodel}.{nexpl}")
             if args.out == "graph-models":
                 print(graphModel)
             else:
-                for sym in xControl.explainer._show_trace:
+                for sym in graphModel.show_trace:
                     e = graphModel.explain(sym)
                     if e is not None:
                         print(e)
@@ -60,32 +64,34 @@ def try_solve_explain(args, programs, extension_loader, solving_pipeline=Preproc
 def main():
     """Main function. Checks command line arguments and acts in consequence."""
     args = check_options()
-    print_header(args)
 
-    programs = read_files(args.infiles)
-    # Only translate
+    # Prints translation and exits
     if args.out == "translation":
-        pipe = DefaultExplainingPipeline()
-        print(pipe.translate("translation", programs))
+        print(DefaultExplainingPipeline().translate("translation", read_files(args.infiles)))
         return 0
 
-    extension_loader = ExtensionLoader()
-    if args.auto_tracing != "none":
-        extension_loader.loadLPExtension(f"autotrace_{args.auto_tracing}.lp")
-    if args.out == "graph-models":
-        extension_loader.loadLPExtension("graph_models_show.lp")
+    print_header(args)
 
-    unsat = try_solve_explain(args, programs, extension_loader)
+    xclingo_control = _init_xclingo_control(args)
 
+    unsat = solve_explain(args, xclingo_control)
     if unsat:
         print("UNSATISFIABLE")
         print(f"Relaxing constraints... (mode={args.constraint_explaining})")
-        # Extensions and pipes for constraints
-        extension_loader.loadLPExtension("violated_constraints_show_trace.lp")
+
+        xclingo_control = _init_xclingo_control(
+            args, solving_preprocessor_pipeline=ConstraintRelaxerPipeline()
+        )
+        # Extensions for constraint explaining
+        xclingo_control.add_to_explainer(
+            load_xclingo_extension("violated_constraints_show_trace.lp")
+        )
         if args.constraint_explaining == "minimize":
-            extension_loader.loadLPExtension("violated_constraints_minimize.lp")
-        solving_pipeline = ConstraintRelaxerPipeline()
-        try_solve_explain(args, programs, extension_loader, solving_pipeline)
+            xclingo_control.add_to_explainer(
+                load_xclingo_extension("violated_constraints_minimize.lp")
+            )
+
+        solve_explain(args, xclingo_control)
 
 
 if __name__ == "__main__":

@@ -1,11 +1,16 @@
-from typing import Sequence
-from clingo import Model
+from typing import Sequence, Union
+from clingo import Model, Logger
 from clingo.control import Control
 from xclingo.explanation import ExplanationGraphModel
 from xclingo.explainer import Explainer
+from xclingo.explainer._utils import XClingoContext
 
 from xclingo.preprocessor import PreprocessorPipeline
 from xclingo.preprocessor import DefaultExplainingPipeline
+
+from xclingo.explainer._logger import XclingoLogger
+
+from ._version import __version__ as xclingo_version
 
 
 class XClingoModel(Model):
@@ -14,60 +19,57 @@ class XClingoModel(Model):
         self._explainer = explainer
 
     def explain_model(self) -> Sequence[ExplanationGraphModel]:
-        return self._explainer._compute_graphs(self)
+        return self._explainer._compute_graphs(self, context=XClingoContext())
 
 
-class XclingoControl:
+class XclingoControl(Control):
     """Interface to xclingo pipeline. Grounding, solving, explaining."""
 
     def __init__(
         self,
-        n_solutions: str = "1",
+        arguments: Sequence[str] = [],
+        logger: Union[Logger, None] = None,
+        message_limit: int = 20,
         n_explanations: str = "1",
-        pre_solving_pipeline: PreprocessorPipeline = PreprocessorPipeline(),
-        pre_explainer_pipeline=None,
-        explainer_context=None,
-        lp_extensions=[],
+        solving_preprocessor_pipeline: PreprocessorPipeline = None,
+        explaining_preprocessor_pipeline: PreprocessorPipeline = None,
     ):
-        self.control = Control([n_solutions])
-        self.pre_solving_pipeline = pre_solving_pipeline
-        self.explainer = Explainer(
-            internal_control_arguments=[
-                n_explanations,
-            ],
-            preprocessor_pipe=pre_explainer_pipeline,
-            custom_context=explainer_context,
-            lp_extensions=lp_extensions,
+        # Solver control
+        super().__init__(arguments=arguments, logger=logger, message_limit=message_limit)
+        self.pre_solving_pipeline = (
+            PreprocessorPipeline()
+            if solving_preprocessor_pipeline is None
+            else solving_preprocessor_pipeline
         )
 
-    def add(self, name: str, parameters: Sequence, program: str):
+        # Explainer control
+        self.pre_explaining_pipeline = (
+            DefaultExplainingPipeline()
+            if explaining_preprocessor_pipeline is None
+            else explaining_preprocessor_pipeline
+        )
+        self.expl_logger = XclingoLogger()
+        self.explainer = Explainer([n_explanations], logger=self.expl_logger.logger)
+
+    def add(self, name: str, parameters: Sequence[str], program: str) -> None:
         """It adds a program to the control.
         Args:
             name (str): name of program block to add.
             program (str): a logic program in ASP format.
         """
-        self.control.add(name, parameters, self.pre_solving_pipeline.translate(name, program))
-        self.explainer.add(name, program)
+        super().add(name, parameters, self.pre_solving_pipeline.translate(name, program))
+        self.explainer.add(name, parameters, self.pre_explaining_pipeline.translate(name, program))
 
-    def ground(self, context=None):
-        """Ground (only base for now) programs.
-        Args:
-            context (Object, optional): Context to be passed to the original program control.
-            Defaults to None.
-        """
+    def add_to_explainer(self, name: str, parameters: Sequence[str], program: str) -> None:
+        self.explainer.add(name, parameters, program)
 
-        self.control.ground([("base", [])], context)
-
-    def solve(self, on_xclingo_model=None) -> Sequence[XClingoModel]:
-        """Returns a generator of xclingo.explanation.Explanation objects. If on_explanation is not None, it is called for each explanation.
-        Yields:
-            Explation: a tree-like object that represents an explanation.
-        """
-        with self.control.solve(yield_=True) as solution_iterator:
+    def solve(self) -> Sequence[XClingoModel]:
+        """Returns a generator of xclingo.explanation.Explanation objects. If on_explanation is not None, it is called for each explanation."""
+        with super().solve(yield_=True) as solution_iterator:
             for model in solution_iterator:
                 yield XClingoModel(model, self.explainer)
 
-    def _default_output(self):
+    def _default_output(self) -> None:
         output = ""
         nanswer = 0
         for xModel in self.solve():
@@ -77,9 +79,9 @@ class XclingoControl:
             nexpl = 0
             for graphModel in xModel.explain_model():
                 nexpl += 1
-                output += f"##Explanation: {nexpl}\n"
+                output += f"##Explanation: {nanswer}.{nexpl}\n"
                 output += "\n".join(
-                    [graphModel.explain(s).ascii_tree() for s in self.explainer._show_trace]
+                    [graphModel.explain(s).ascii_tree() for s in graphModel.show_trace]
                 )
                 output += "\n"
             output += f"##Total Explanations:\t{nexpl}\n"

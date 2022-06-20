@@ -1,42 +1,42 @@
 Answer: 1
 a p b q c
-##Explanation: 1
-  *
-  |__p
-  |  |__b
-
-  *
-  |__q
-  |  |__p
-  |  |  |__b
-
-##Explanation: 2
-  *
-  |__p
-  |  |__b
-
+##Explanation: 1.1
   *
   |__q
   |  |__c
 
-##Explanation: 3
   *
   |__p
   |  |__a
 
+##Explanation: 1.2
   *
   |__q
   |  |__p
   |  |  |__a
 
-##Explanation: 4
   *
   |__p
   |  |__a
 
+##Explanation: 1.3
   *
   |__q
   |  |__c
+
+  *
+  |__p
+  |  |__b
+
+##Explanation: 1.4
+  *
+  |__q
+  |  |__p
+  |  |  |__b
+
+  *
+  |__p
+  |  |__b
 
 ##Total Explanations:	4
 Models:	1
