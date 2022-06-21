@@ -54,15 +54,18 @@ class Explanation:
 
         self.atom = atom
 
-    def preorder_iterator(self):
-        stack = [iter([self])]
+    def preorder_iterator(self, only_labelled=False):
+        if only_labelled and not self.labels:
+            stack = [iter(self.causes)]
+        else:
+            stack = [iter([self])]
         level = 1
         while stack:
             try:
                 current = next(stack[-1])
                 yield (current, level)
-                stack.append(iter(current.causes))
                 level += 1
+                stack.append(iter(current.causes))
             except StopIteration:
                 stack.pop()
                 level += -1
@@ -75,7 +78,7 @@ class Explanation:
                 return ""
 
         expl = "  *\n"
-        for node, level in self.preorder_iterator():
+        for node, level in self.preorder_iterator(only_labelled=True):
             expl += "{branch}{text}\n".format(
                 branch=ascii_branch(level),
                 text=node.get_node_text(),

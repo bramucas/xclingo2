@@ -8,6 +8,7 @@ _xclingo_edge((Caused, Cause), complete_explanation) :-
     _xclingo_audible(Cause).
 
 % Compressing graph
+_xclingo_visible(X) :- _xclingo_node(X, complete_explanation), _xclingo_show_trace(X).
 _xclingo_visible(X) :- _xclingo_node(X, complete_explanation), _xclingo_label(X, _).
 %
 _xclingo_skip(X, Y) :- _xclingo_edge((X, Y), complete_explanation), not _xclingo_visible(X).
