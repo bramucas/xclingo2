@@ -1,5 +1,7 @@
 {switch(1..3)}.
 
+switch(1).
+
 %!trace_rule {"bulb is OFF"}
 bulb(off) :- not bulb(on).
 

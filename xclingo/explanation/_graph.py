@@ -23,7 +23,10 @@ class ExplanationGraphModel(Model):
                 if len(s.arguments) == 1:  # _xclingo_show_trace(Atom)
                     self._show_trace.append(s.arguments[0])
                 elif len(s.arguments) == 2:  # _xclingo_edge((Caused, Cause), explanation)
-                    caused, cause = s.arguments[0].arguments
+                    if s.name == "_xclingo_edge":
+                        caused, cause = s.arguments[0].arguments
+                    else:  # _xclingo_link(ToExplainAtom, Cause)
+                        caused, cause = s.arguments
                     self._index.setdefault(caused, Explanation(caused))
                     self._index.setdefault(cause, Explanation(cause))
                     self._index[caused].add_cause(self._index[cause])

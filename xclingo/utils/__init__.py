@@ -46,6 +46,7 @@ def check_options():
             "ascii-trees",
             "translation",
             "graph-models",
+            "render-graphs",
         ],
         default="ascii-trees",
         help="""Determines the format of the output. "translation" will output the translation 
@@ -89,4 +90,4 @@ def check_options():
     parser.add_argument(
         "infiles", nargs="+", type=FileType("r"), default=sys.stdin, help="ASP program"
     )
-    return parser.parse_args()
+    return parser.parse_known_args()

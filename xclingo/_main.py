@@ -49,7 +49,11 @@ class XclingoControl(Control):
             else explaining_preprocessor_pipeline
         )
         self.expl_logger = XclingoLogger()
-        self.explainer = Explainer([n_explanations], logger=self.expl_logger.logger)
+        constants = []
+        for i, a in enumerate(arguments):
+            if a in ("-c", "--const"):
+                constants.extend(arguments[i : i + 2])
+        self.explainer = Explainer([n_explanations] + constants, logger=self.expl_logger.logger)
 
     def add(self, name: str, parameters: Sequence[str], program: str) -> None:
         """It adds a program to the control.

@@ -93,7 +93,17 @@ class TestXclingo:
         )
         self.assert_test_case(
             datadir,
+            "diag",
+            self.xctl_none(),
+        )
+        self.assert_test_case(
+            datadir,
             "diamond_with_mute",
+            self.xctl_none(),
+        )
+        self.assert_test_case(
+            datadir,
+            "disyunction",
             self.xctl_none(),
         )
         self.assert_test_case(

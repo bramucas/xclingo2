@@ -12,17 +12,23 @@ from .extensions import load_xclingo_extension
 from .utils import FrozenModel, check_options, print_header
 
 
+from clingraph.orm import Factbase
+from clingraph import compute_graphs as compute_clingraphs
+from clingraph.graphviz import render
+
+
 def read_files(files: Sequence[TextIO]):
     return "\n".join([file.read() for file in files])
 
 
 def _init_xclingo_control(
     args,
+    unknown_args,
     program,
     constraints=False,
 ):
     xclingo_control = XclingoControl(
-        [str(args.n[0])],
+        [str(args.n[0])] + unknown_args,
         n_explanations=str(args.n[1]),
         solving_preprocessor_pipeline=ConstraintRelaxerPipeline() if constraints else None,
     )
@@ -32,8 +38,9 @@ def _init_xclingo_control(
             "base", [], load_xclingo_extension(f"autotrace_{args.auto_tracing}.lp")
         )
 
-    if args.output == "graph-models":
-        xclingo_control.add_to_explainer("base", [], load_xclingo_extension("graph_models_show.lp"))
+    if args.output == "render-graphs":
+        xclingo_control.add_to_explainer("base", [], load_xclingo_extension("graph_locals.lp"))
+        xclingo_control.add_to_explainer("base", [], load_xclingo_extension("graph_styles.lp"))
 
     if constraints:
         xclingo_control.add_to_explainer(
@@ -50,21 +57,45 @@ def _init_xclingo_control(
     return xclingo_control
 
 
+def render_graphs(args, xclingo_control: XclingoControl):
+    nmodel = 0
+    for x_model in xclingo_control.solve():
+        nmodel += 1
+        nexpl = 0
+        for graph_model in x_model.explain_model():
+            nexpl += 1
+            render(
+                compute_clingraphs(
+                    Factbase.from_model(
+                        graph_model, prefix="_xclingo_", default_graph="explanation"
+                    ),
+                    graphviz_type="digraph",
+                ),
+                name_format=f"answer-{nmodel}_" + "explanation-{model_number}_{graph_name}",
+                format="png",
+            )
+
+    if nmodel > 0:
+        print("Images saved in ./out/")
+
+    return nmodel == 0
+
+
 def solve_explain(args, xclingo_control: XclingoControl):
     nmodel = 0
-    for xmodel in xclingo_control.solve():
+    for x_model in xclingo_control.solve():
         nmodel += 1
         print(f"Answer: {nmodel}")
-        print(xmodel)
+        print(x_model)
         nexpl = 0
-        for graphModel in xmodel.explain_model():
+        for graph_model in x_model.explain_model():
             nexpl += 1
             print(f"##Explanation: {nmodel}.{nexpl}")
             if args.output == "graph-models":
-                print(graphModel)
+                print(graph_model)
             else:
-                for sym in graphModel.show_trace:
-                    e = graphModel.explain(sym)
+                for sym in graph_model.show_trace:
+                    e = graph_model.explain(sym)
                     if e is not None:
                         print(e)
         print(f"##Total Explanations:\t{nexpl}")
@@ -75,23 +106,10 @@ def solve_explain(args, xclingo_control: XclingoControl):
         return True
 
 
-def explain_constraints(args, program):
-    print("UNSATISFIABLE")
-    print(f"Relaxing constraints... (mode={args.constraint_explaining})")
-
-    xclingo_control = _init_xclingo_control(
-        args,
-        program,
-        constraints=True,
-    )
-
-    solve_explain(args, xclingo_control)
-
-
 def into_pickle(args, xclingo_control: XclingoControl, save_on_unsat=False):
     buf = []
-    for xmodel in xclingo_control.solve():
-        for graph_model in xmodel.explain_model():
+    for x_model in xclingo_control.solve():
+        for graph_model in x_model.explain_model():
             buf.append(frozenset(str(s) for s in graph_model.symbols(shown=True)))
 
     if len(buf) == 0 and not save_on_unsat:
@@ -108,7 +126,7 @@ def into_pickle(args, xclingo_control: XclingoControl, save_on_unsat=False):
 
 def main():
     """Main function. Checks command line arguments and acts in consequence."""
-    args = check_options()
+    args, unknown_args = check_options()
 
     # Prints translation and exits
     if args.output == "translation":
@@ -117,18 +135,25 @@ def main():
 
     print_header(args)
     programs = read_files(args.infiles)
-    xclingo_control = _init_xclingo_control(args, programs)
 
+    xclingo_control = _init_xclingo_control(args, unknown_args, programs)
     if args.picklefile:  # default value: ""
         unsat = into_pickle(args, xclingo_control, save_on_unsat=False)
-        if unsat:
-            into_pickle(
-                args, _init_xclingo_control(args, programs, constraints=True), save_on_unsat=True
-            )
+    elif args.output == "render-graphs":
+        unsat = render_graphs(args, xclingo_control)
     else:
         unsat = solve_explain(args, xclingo_control)
-        if unsat:
-            explain_constraints(args, programs)
+
+    xclingo_control = _init_xclingo_control(args, unknown_args, programs, constraints=True)
+    if unsat:
+        if args.picklefile:
+            into_pickle(args, xclingo_control, save_on_unsat=True)
+        elif args.output == "render-graphs":
+            render_graphs(args, xclingo_control)
+        else:
+            print("UNSATISFIABLE")
+            print(f"Relaxing constraints... (mode={args.constraint_explaining})")
+            solve_explain(args, xclingo_control)
 
 
 if __name__ == "__main__":

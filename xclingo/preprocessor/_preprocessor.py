@@ -573,7 +573,9 @@ class XClingoPreprocessor(Preprocessor):
             rule_ast (ast.ASTType.Rule): rule to be translated.
         """
         self._add_comment_to_translation(rule_ast)
-        if rule_ast.ast_type == ast.ASTType.Rule:
+        if rule_ast.ast_type != ast.ASTType.Rule:
+            yield rule_ast
+        else:
             if is_xclingo_label(rule_ast):
                 if is_label_rule(rule_ast):
                     self._last_trace_rule = rule_ast
