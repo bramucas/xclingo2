@@ -600,9 +600,7 @@ class XClingoPreprocessor(Preprocessor):
                         yield self.support_rule(rule_id, false_rule)
                         yield self.fbody_rule(rule_id, false_rule)
                         if self._last_trace_rule is not None:
-                            self.add_to_translation(
-                                self.label_rule(rule_id, self._last_trace_rule, false_rule.body)
-                            )
+                            yield self.label_rule(rule_id, self._last_trace_rule, false_rule.body)
                     if self._last_trace_rule is not None:
                         self._last_trace_rule = None
                 elif is_constraint(rule_ast) and self._last_trace_rule is not None:
