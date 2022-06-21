@@ -1,4 +1,7 @@
+from copyreg import pickle
 from typing import Sequence, TextIO
+from attr import frozen
+from clingo import Control
 from xclingo import XclingoControl
 from xclingo.preprocessor import (
     DefaultExplainingPipeline,
@@ -6,7 +9,7 @@ from xclingo.preprocessor import (
 )
 
 from .extensions import load_xclingo_extension
-from ._args_handler import check_options, print_header
+from .utils import FrozenModel, check_options, print_header
 
 
 def read_files(files: Sequence[TextIO]):
@@ -14,34 +17,42 @@ def read_files(files: Sequence[TextIO]):
 
 
 def _init_xclingo_control(
-    args, solving_preprocessor_pipeline=None, explaining_preprocessor_pipeline=None
+    args,
+    program,
+    constraints=False,
 ):
     xclingo_control = XclingoControl(
         [str(args.n[0])],
         n_explanations=str(args.n[1]),
-        solving_preprocessor_pipeline=solving_preprocessor_pipeline,
-        explaining_preprocessor_pipeline=explaining_preprocessor_pipeline,
+        solving_preprocessor_pipeline=ConstraintRelaxerPipeline() if constraints else None,
     )
 
     if args.auto_tracing != "none":
         xclingo_control.add_to_explainer(
             "base", [], load_xclingo_extension(f"autotrace_{args.auto_tracing}.lp")
         )
-    if args.out == "graph-models":
+
+    if args.output == "graph-models":
         xclingo_control.add_to_explainer("base", [], load_xclingo_extension("graph_models_show.lp"))
 
-    programs = read_files(args.infiles)
-    xclingo_control.add("base", [], programs)
+    if constraints:
+        xclingo_control.add_to_explainer(
+            "base", [], load_xclingo_extension("violated_constraints_show_trace.lp")
+        )
+        if args.constraint_explaining == "minimize":
+            xclingo_control.add_to_explainer(
+                "base", [], load_xclingo_extension("violated_constraints_minimize.lp")
+            )
+
+    xclingo_control.add("base", [], program)
     xclingo_control.ground([("base", [])])
 
     return xclingo_control
 
 
-def solve_explain(args, xclingo_control):
-    unsat = True
+def solve_explain(args, xclingo_control: XclingoControl):
     nmodel = 0
     for xmodel in xclingo_control.solve():
-        unsat = False
         nmodel += 1
         print(f"Answer: {nmodel}")
         print(xmodel)
@@ -49,7 +60,7 @@ def solve_explain(args, xclingo_control):
         for graphModel in xmodel.explain_model():
             nexpl += 1
             print(f"##Explanation: {nmodel}.{nexpl}")
-            if args.out == "graph-models":
+            if args.output == "graph-models":
                 print(graphModel)
             else:
                 for sym in graphModel.show_trace:
@@ -57,8 +68,42 @@ def solve_explain(args, xclingo_control):
                     if e is not None:
                         print(e)
         print(f"##Total Explanations:\t{nexpl}")
-    print(f"Models:\t{nmodel}")
-    return unsat
+    if nmodel > 0:
+        print(f"Models:\t{nmodel}")
+        return False
+    else:
+        return True
+
+
+def explain_constraints(args, program):
+    print("UNSATISFIABLE")
+    print(f"Relaxing constraints... (mode={args.constraint_explaining})")
+
+    xclingo_control = _init_xclingo_control(
+        args,
+        program,
+        constraints=True,
+    )
+
+    solve_explain(args, xclingo_control)
+
+
+def into_pickle(args, xclingo_control: XclingoControl, save_on_unsat=False):
+    buf = []
+    for xmodel in xclingo_control.solve():
+        for graph_model in xmodel.explain_model():
+            buf.append(frozenset(str(s) for s in graph_model.symbols(shown=True)))
+
+    if len(buf) == 0 and not save_on_unsat:
+        return True
+
+    import pickle
+
+    with open(args.picklefile, "wb") as picklefile:
+        pickle.dump(frozenset(buf), picklefile)
+        print(f"Results saved as frozen sets at {args.picklefile}")
+
+    return False
 
 
 def main():
@@ -66,32 +111,24 @@ def main():
     args = check_options()
 
     # Prints translation and exits
-    if args.out == "translation":
+    if args.output == "translation":
         print(DefaultExplainingPipeline().translate("translation", read_files(args.infiles)))
         return 0
 
     print_header(args)
+    programs = read_files(args.infiles)
+    xclingo_control = _init_xclingo_control(args, programs)
 
-    xclingo_control = _init_xclingo_control(args)
-
-    unsat = solve_explain(args, xclingo_control)
-    if unsat:
-        print("UNSATISFIABLE")
-        print(f"Relaxing constraints... (mode={args.constraint_explaining})")
-
-        xclingo_control = _init_xclingo_control(
-            args, solving_preprocessor_pipeline=ConstraintRelaxerPipeline()
-        )
-        # Extensions for constraint explaining
-        xclingo_control.add_to_explainer(
-            load_xclingo_extension("violated_constraints_show_trace.lp")
-        )
-        if args.constraint_explaining == "minimize":
-            xclingo_control.add_to_explainer(
-                load_xclingo_extension("violated_constraints_minimize.lp")
+    if args.picklefile:  # default value: ""
+        unsat = into_pickle(args, xclingo_control, save_on_unsat=False)
+        if unsat:
+            into_pickle(
+                args, _init_xclingo_control(args, programs, constraints=True), save_on_unsat=True
             )
-
-        solve_explain(args, xclingo_control)
+    else:
+        unsat = solve_explain(args, xclingo_control)
+        if unsat:
+            explain_constraints(args, programs)
 
 
 if __name__ == "__main__":

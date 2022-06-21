@@ -63,8 +63,10 @@ class XclingoControl(Control):
     def add_to_explainer(self, name: str, parameters: Sequence[str], program: str) -> None:
         self.explainer.add(name, parameters, program)
 
-    def solve(self) -> Sequence[XClingoModel]:
+    def solve(self, on_unsat=None) -> Sequence[XClingoModel]:
         """Returns a generator of xclingo.explanation.Explanation objects. If on_explanation is not None, it is called for each explanation."""
+        if on_unsat:
+            super().solve(on_unsat=on_unsat)
         with super().solve(yield_=True) as solution_iterator:
             for model in solution_iterator:
                 yield XClingoModel(model, self.explainer)

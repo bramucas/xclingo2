@@ -1,6 +1,5 @@
 from typing import Iterator, Sequence, Union
-from click import argument
-from clingo import Logger, Model, Function, TruthValue
+from clingo import Logger, Model, Function
 from clingo.control import Control
 from xclingo.explanation import ExplanationGraphModel
 from xclingo.xclingo_lp import FIRED_LP, GRAPH_LP, SHOW_LP
@@ -25,7 +24,9 @@ class Explainer:
     def add(self, name, parameters, program):
         self.programs.append((name, parameters, program))
 
-    def _compute_graphs(self, model: Model, context=None) -> Iterator[ExplanationGraphModel]:
+    def _compute_graphs(
+        self, model: Model, on_explanation=None, context=None
+    ) -> Iterator[ExplanationGraphModel]:
         """Return the ExplanationGraphModel instances for the given (original's program) model.
 
         Args:
@@ -52,7 +53,12 @@ class Explainer:
         with ctl.backend() as back:
             for sym in model.symbols(atoms=True):
                 back.add_rule([back.add_atom(Function("_xclingo_model", [sym], True))], [], False)
-        ctl.ground([("base", [])], context=XClingoContext())
-        with ctl.solve(yield_=True) as it:
-            for graph_model in it:
-                yield ExplanationGraphModel(graph_model)
+        # Ground
+        ctl.ground([("base", [])], context=context if context is not None else XClingoContext())
+        # Solve
+        if on_explanation is not None:
+            ctl.solve(on_model=on_explanation)
+        else:
+            with ctl.solve(yield_=True) as it:
+                for graph_model in it:
+                    yield ExplanationGraphModel(graph_model)

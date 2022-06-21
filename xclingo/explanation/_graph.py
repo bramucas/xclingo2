@@ -6,23 +6,34 @@ from collections import defaultdict
 class ExplanationGraphModel(Model):
     def __init__(self, graph_model: Model):
         super().__init__(graph_model._rep)
-        # Builds graph from model
-        self.show_trace = []
-        self.index = defaultdict()
-        for s in self.symbols(shown=True):
-            if len(s.arguments) == 1:  # _xclingo_show_trace(Atom)
-                self.show_trace.append(s.arguments[0])
-            elif len(s.arguments) == 2:  # _xclingo_edge((Caused, Cause), explanation)
-                caused, cause = s.arguments[0].arguments
-                self.index.setdefault(caused, Explanation(caused))
-                self.index.setdefault(cause, Explanation(cause))
-                self.index[caused].add_cause(self.index[cause])
-            else:  # _xclingo_attr(node, Atom, label, Label)
-                self.index.setdefault(s.arguments[1], Explanation(s.arguments[1]))
-                self.index[s.arguments[1]].add_label(str(s.arguments[3]))
+
+    @property
+    def show_trace(self):
+        if not hasattr(self, "_index"):
+            self.index
+        return self._show_trace
+
+    @property
+    def index(self):
+        if not hasattr(self, "_index"):
+            # Builds graph from model
+            setattr(self, "_show_trace", [])
+            setattr(self, "_index", defaultdict())
+            for s in self.symbols(shown=True):
+                if len(s.arguments) == 1:  # _xclingo_show_trace(Atom)
+                    self._show_trace.append(s.arguments[0])
+                elif len(s.arguments) == 2:  # _xclingo_edge((Caused, Cause), explanation)
+                    caused, cause = s.arguments[0].arguments
+                    self._index.setdefault(caused, Explanation(caused))
+                    self._index.setdefault(cause, Explanation(cause))
+                    self._index[caused].add_cause(self._index[cause])
+                else:  # _xclingo_attr(node, Atom, label, Label)
+                    self._index.setdefault(s.arguments[1], Explanation(s.arguments[1]))
+                    self._index[s.arguments[1]].add_label(str(s.arguments[3]))
+        return self._index
 
     def explain(self, symbol: Symbol):
-        return self.index.get(symbol, None)
+        return self._index.get(symbol, None)
 
 
 class Explanation:

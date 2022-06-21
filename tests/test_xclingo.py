@@ -1,4 +1,5 @@
-import pytest
+from pathlib import PosixPath
+from pickle import load
 
 from xclingo import XclingoControl
 from xclingo.preprocessor import (
@@ -41,7 +42,7 @@ class TestXclingo:
 
     def assert_test_case(
         self,
-        datadir,
+        datadir: PosixPath,
         test_case: str,
         xclingo_control: XclingoControl,
     ):
@@ -58,9 +59,16 @@ class TestXclingo:
         xclingo_control.add("base", [], (datadir / f"{test_case}_test.lp").read_text())
         xclingo_control.ground([("base", [])])
 
-        result = xclingo_control._default_output()
-        expected = (datadir / f"{test_case}_res.txt").read_text()
+        buf = []
+        for xmodel in xclingo_control.solve():
+            for graph_model in xmodel.explain_model():
+                buf.append(frozenset(str(s) for s in graph_model.symbols(shown=True)))
+        result = frozenset(buf)
+
+        print(f"!! - Testing {test_case} test case...  ", end="")
+        expected = load((datadir / f"{test_case}_res.pickle").open("rb"))
         assert expected == result
+        print("CORRECT")
 
     def test_cases_results(self, datadir):
         """This should test all the tests within the test_xclingo/ dir.
