@@ -107,7 +107,9 @@ def is_constraint(rule_ast):
 
 def is_xclingo_label(rule_ast):
     return (
-        rule_ast.head.ast_type == ast.ASTType.Literal
+        rule_ast.ast_type == ast.ASTType.Rule
+        and rule_ast.head.ast_type == ast.ASTType.Literal
+        and rule_ast.head.atom != ast.BooleanConstant(0)
         and rule_ast.head.atom.symbol.ast_type == ast.ASTType.Function
         and rule_ast.head.atom.symbol.name == "_xclingo_label"
     )
@@ -115,7 +117,9 @@ def is_xclingo_label(rule_ast):
 
 def is_xclingo_show_trace(rule_ast):
     return (
-        rule_ast.head.ast_type == ast.ASTType.Literal
+        rule_ast.ast_type == ast.ASTType.Rule
+        and rule_ast.head.ast_type == ast.ASTType.Literal
+        and rule_ast.head.atom != ast.BooleanConstant(0)
         and rule_ast.head.atom.symbol.ast_type == ast.ASTType.Function
         and rule_ast.head.atom.symbol.name == "_xclingo_show_trace"
     )
@@ -123,7 +127,9 @@ def is_xclingo_show_trace(rule_ast):
 
 def is_xclingo_mute(rule_ast):
     return (
-        rule_ast.head.ast_type == ast.ASTType.Literal
+        rule_ast.ast_type == ast.ASTType.Rule
+        and rule_ast.head.ast_type == ast.ASTType.Literal
+        and rule_ast.head.atom != ast.BooleanConstant(0)
         and rule_ast.head.atom.symbol.ast_type == ast.ASTType.Function
         and rule_ast.head.atom.symbol.name == "_xclingo_muted"
     )
@@ -136,7 +142,8 @@ def is_label_rule(rule_ast):
 
 def is_choice_rule(rule_ast):
     return (
-        rule_ast.head.ast_type == ast.ASTType.Aggregate
+        rule_ast.ast_type == ast.ASTType.Rule
+        and rule_ast.head.ast_type == ast.ASTType.Aggregate
         and hasattr(rule_ast.head, "function") == False
     )
 

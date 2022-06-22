@@ -4,6 +4,6 @@ except ImportError:
     # Try backported to PY<37 `importlib_resources`.
     from importlib_resources import read_text
 
-FIRED_LP = read_text(__package__, "xclingo_fired.lp")
-GRAPH_LP = read_text(__package__, "xclingo_graph.lp")
-SHOW_LP = read_text(__package__, "xclingo_show.lp")
+
+def load_xclingo_extension(extension_filename: str):
+    return read_text(__package__, resource=extension_filename)

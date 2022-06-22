@@ -1,12 +1,10 @@
-{switch(1..3)}.
-
-switch(1).
+{switch(s1;s2;s3)}.
 
 %!trace_rule {"bulb is OFF"}
 bulb(off) :- not bulb(on).
 
 %!trace_rule {"bulb is ON"}
-bulb(on) :- switch(1), switch(3).
+bulb(on) :- switch(s1), switch(s3).
 
 %!trace {"switch % is enabled",S} switch(S).
 
