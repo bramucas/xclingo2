@@ -1,3 +1,4 @@
+%%%%%%%%%%%%%% xclingo_show.lp %%%%%%%%%%%%%%%%%
 #show.
 % All show traces
 #show _xclingo_show_trace(Atom) : _xclingo_show_trace(Atom), _xclingo_node(Atom, Graph), Graph=complete_explanation.

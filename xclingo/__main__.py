@@ -4,10 +4,10 @@ from xclingo.preprocessor import (
     DefaultExplainingPipeline,
     ConstraintRelaxerPipeline,
 )
+from xclingo.extensions import load_xclingo_extension
 
-from .extensions import load_xclingo_extension
-from .utils import check_options, print_header
-
+from ._utils import print_header, print_version
+from ._arguments_handler import check_options
 
 from clingraph.orm import Factbase
 from clingraph import compute_graphs as compute_clingraphs
@@ -52,6 +52,25 @@ def _init_xclingo_control(
     xclingo_control.ground([("base", [])])
 
     return xclingo_control
+
+
+def print_explainer_program(args):
+    from xclingo.xclingo_lp import FIRED_LP, GRAPH_LP, SHOW_LP
+
+    print_version()
+    print(FIRED_LP)
+    print(GRAPH_LP)
+    print(SHOW_LP)
+
+    if args.auto_tracing != "none":
+        print(load_xclingo_extension(f"autotrace_{args.auto_tracing}.lp"))
+
+    if args.output == "render-graphs":
+        print(load_xclingo_extension("graph_locals.lp"))
+        print(load_xclingo_extension("graph_styles.lp"))
+
+    if len(args.infiles) > 0:
+        print(DefaultExplainingPipeline().translate("translation", read_files(args.infiles)))
 
 
 def render_graphs(args, xclingo_control: XclingoControl):
@@ -125,6 +144,11 @@ def into_pickle(args, xclingo_control: XclingoControl, save_on_unsat=False):
 def main():
     """Main function. Checks command line arguments and acts in consequence."""
     args, unknown_args = check_options()
+
+    # Prints translation and explainer lp and exits
+    if args.debug_output == "explainer-program":
+        print_explainer_program(args)
+        return 0
 
     # Prints translation and exits
     if args.output == "translation":

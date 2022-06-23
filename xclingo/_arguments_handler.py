@@ -1,33 +1,8 @@
-from clingo import Model
-
 from argparse import ArgumentParser, FileType
 import sys
-from .._version import __version__ as xclingo_version
+from ._version import __version__ as xclingo_version
 
 from pathlib import Path
-
-
-class FrozenModel:
-    def __init__(self):
-        self._mem = []
-
-    @property
-    def mem(self):
-        return frozenset(self._mem)
-
-    def save(self, m: Model):
-        self._mem.append(frozenset(str(s) for s in m.symbols(shown=True)))
-
-    def __eq__(self, other):
-        return self.mem == other.mem
-
-    def __init__(self):
-        self._mem = []
-
-
-def print_header(args):
-    print(f"xclingo version {xclingo_version}")
-    print(f"Reading from {' '.join([f.name for f in args.infiles])}")
 
 
 def check_options():
@@ -54,6 +29,15 @@ def check_options():
         help="""Determines the format of the output. "translation" will output the translation 
         together with the xclingo logic program. "graph-models" will output the explanation 
         graphs following clingraph format.""",
+    )
+    parser.add_argument(
+        "--debug-output",
+        type=str,
+        choices=[
+            "none",
+            "explainer-program",
+        ],
+        default="none",
     )
     parser.add_argument(
         "--outdir",

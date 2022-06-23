@@ -1,3 +1,5 @@
+%%%%%%%%%%%%%% xclingo_graph.lp %%%%%%%%%%%%%%%%%
+
 % Complete explanation graph (includes non labelled atoms)
 _xclingo_graph(complete_explanation).
 _xclingo_node(Atom, complete_explanation) :- _xclingo_audible(Atom).  %TODO: remove f_atom in favor of node

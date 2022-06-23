@@ -1,4 +1,5 @@
-from typing import Sequence, Union
+from clingo import Symbol
+from typing import Sequence, Union, Tuple
 from clingo import Model, Logger
 from clingo.control import Control
 from xclingo.explanation import ExplanationGraphModel
@@ -66,6 +67,13 @@ class XclingoControl(Control):
 
     def extend_explainer(self, name: str, parameters: Sequence[str], program: str) -> None:
         self.explainer.add(name, parameters, program)
+
+    def add_show_trace(self, atom: Symbol, conditions: Sequence[Tuple[bool, Symbol]] = []):
+        rule = "_xclingo_show_trace({atom}) :- _xclingo_model({atom}), {body}.".format(
+            atom=str(atom),
+            body=",".join(f"{'' if sign else 'not'} {str(s)}" for sign, s in conditions),
+        )
+        self.explainer.add("base", [], f"_xclingo_show_trace({str(atom)}) :- .")
 
     def solve(self, on_unsat=None) -> Sequence[XClingoModel]:
         """Returns a generator of xclingo.explanation.Explanation objects. If on_explanation is not None, it is called for each explanation."""
