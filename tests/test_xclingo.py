@@ -16,7 +16,7 @@ class TestXclingo:
             ["0"],
             n_explanations="0",
         )
-        xctl.add_to_explainer("base", [], load_xclingo_extension("autotrace_all.lp"))
+        xctl.extend_explainer("base", [], load_xclingo_extension("autotrace_all.lp"))
         return xctl
 
     def xctl_none(self):
@@ -32,10 +32,10 @@ class TestXclingo:
             n_explanations="0",
             solving_preprocessor_pipeline=ConstraintRelaxerPipeline(),
         )
-        xctl.add_to_explainer(
+        xctl.extend_explainer(
             "base", [], load_xclingo_extension("violated_constraints_minimize.lp")
         )
-        xctl.add_to_explainer(
+        xctl.extend_explainer(
             "base", [], load_xclingo_extension("violated_constraints_show_trace.lp")
         )
         return xctl

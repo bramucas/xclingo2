@@ -64,7 +64,7 @@ class XclingoControl(Control):
         super().add(name, parameters, self.pre_solving_pipeline.translate(name, program))
         self.explainer.add(name, parameters, self.pre_explaining_pipeline.translate(name, program))
 
-    def add_to_explainer(self, name: str, parameters: Sequence[str], program: str) -> None:
+    def extend_explainer(self, name: str, parameters: Sequence[str], program: str) -> None:
         self.explainer.add(name, parameters, program)
 
     def solve(self, on_unsat=None) -> Sequence[XClingoModel]:
