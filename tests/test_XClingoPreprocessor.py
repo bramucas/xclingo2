@@ -2,7 +2,16 @@ from clingo.symbol import Number
 import pytest
 import clingo.ast as ast
 from clingo import Number, String
-from xclingo.preprocessor import XClingoPreprocessor
+from xclingo.preprocessor._transformers import (
+    propagates,
+    _sup_body,
+    transformer_support_rule,
+    _fbody_body,
+    transformer_fbody_rule,
+    transformer_label_rule,
+    transformer_label_atom,
+    transformer_show_trace,
+)
 
 
 class TestXClingoPreprocessor:
@@ -729,42 +738,29 @@ class TestXClingoPreprocessor:
         return rule
 
     def test_propagates(self, custom_body, expected_propagates):
-        preprocessor = XClingoPreprocessor()
-        assert expected_propagates == list(preprocessor.propagates(custom_body))
+        assert expected_propagates == list(propagates(custom_body))
 
     def test_sup_body(self, custom_body, expected_sup_body):
-        preprocessor = XClingoPreprocessor()
-        assert expected_sup_body == list(preprocessor._sup_body(custom_body))
+        assert expected_sup_body == list(_sup_body(custom_body))
 
     def test_sup_rule(self, custom_rule, expected_support_rule):
         rule_id, expected = expected_support_rule
-        preprocessor = XClingoPreprocessor()
-        support_rule = preprocessor.support_rule(rule_id, custom_rule)
-        assert expected == support_rule
+        assert expected == transformer_support_rule(rule_id, custom_rule)
 
     def test_fbody_body(self, custom_body, expected_fbody_body):
-        preprocessor = XClingoPreprocessor()
-        body = list(preprocessor._fbody_body(custom_body))
+        body = list(_fbody_body(custom_body))
         assert expected_fbody_body == body
 
     def test_fbody_rule(self, custom_rule, expected_fbody_rule):
-        preprocessor = XClingoPreprocessor()
         rule_id, expected = expected_fbody_rule
-        rule = preprocessor.fbody_rule(rule_id, custom_rule)
-        assert expected == rule
+        assert expected == transformer_fbody_rule(rule_id, custom_rule)
 
     def test_label_rule(self, custom_label_rule, expected_label_rule, custom_body):
-        preprocessor = XClingoPreprocessor()
         rule_id, expected = expected_label_rule
-        rule = preprocessor.label_rule(rule_id, custom_label_rule, custom_body)
-        assert expected == rule
+        assert expected == transformer_label_rule(rule_id, custom_label_rule, custom_body)
 
     def test_label_atom(self, custom_label_atom, expected_label_atom):
-        preprocessor = XClingoPreprocessor()
-        rule = preprocessor.label_atom(custom_label_atom)
-        assert expected_label_atom == rule
+        assert expected_label_atom == transformer_label_atom(custom_label_atom)
 
     def test_show_trace(self, custom_show_trace, expected_show_trace):
-        preprocessor = XClingoPreprocessor()
-        rule = preprocessor.show_trace(custom_show_trace)
-        assert expected_show_trace == rule
+        assert expected_show_trace == transformer_show_trace(custom_show_trace)
