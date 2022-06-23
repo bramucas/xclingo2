@@ -1,4 +1,5 @@
-%%%%%%%%%%%%%% xclingo.lp %%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%% xclingo_fired.lp %%%%%%%%%%%%%%%%%
+% 
 _xclingo_inbody(@inbody(Body)) :- _xclingo_sup(_, _, Body).
 
 % Marks relevant atoms of the program, with respect of the atoms that must be explained.
