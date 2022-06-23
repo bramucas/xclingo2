@@ -4,6 +4,8 @@ from argparse import ArgumentParser, FileType
 import sys
 from .._version import __version__ as xclingo_version
 
+from pathlib import Path
+
 
 class FrozenModel:
     def __init__(self):
@@ -52,6 +54,11 @@ def check_options():
         help="""Determines the format of the output. "translation" will output the translation 
         together with the xclingo logic program. "graph-models" will output the explanation 
         graphs following clingraph format.""",
+    )
+    parser.add_argument(
+        "--outdir",
+        type=Path,
+        help="Only takes effect when used together with --output=render-graphs.",
     )
     parser.add_argument(
         "--picklefile",

@@ -1,7 +1,4 @@
-from copyreg import pickle
 from typing import Sequence, TextIO
-from attr import frozen
-from clingo import Control
 from xclingo import XclingoControl
 from xclingo.preprocessor import (
     DefaultExplainingPipeline,
@@ -9,7 +6,7 @@ from xclingo.preprocessor import (
 )
 
 from .extensions import load_xclingo_extension
-from .utils import FrozenModel, check_options, print_header
+from .utils import check_options, print_header
 
 
 from clingraph.orm import Factbase
@@ -71,8 +68,9 @@ def render_graphs(args, xclingo_control: XclingoControl):
                     ),
                     graphviz_type="digraph",
                 ),
-                name_format=f"answer-{nmodel}_" + "explanation-{model_number}_{graph_name}",
+                name_format=f"explanation{nmodel}-{nexpl}" + "_{graph_name}",
                 format="png",
+                directory=args.outdir if args.outdir else "out/",
             )
 
     if nmodel > 0:
