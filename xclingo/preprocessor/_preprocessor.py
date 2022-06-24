@@ -207,29 +207,31 @@ class XClingoPreprocessor(Preprocessor):
 
             else:
                 rule_id = self._increment_rule_count()
+                # Fake relaxed constraint rule
+                if is_constraint(rule_ast) and self._last_trace_rule is not None:
+                    rule_ast = ast.Rule(
+                        loc, _xclingo_constraint_head(rule_id, rule_ast.body), rule_ast.body
+                    )
+                # Translates fbody
+                yield transformer_fbody_rule(rule_id, rule_ast)
 
-                to_translate = []
+                # Decices how much support rules we want to instantiate
+                support_rules = []
                 if is_choice_rule(rule_ast) or is_disyunctive_head(rule_ast):
                     for cond_lit in rule_ast.head.elements:
-                        to_translate.append(
+                        support_rules.append(
                             ast.Rule(
                                 loc,
                                 cond_lit.literal,
                                 list(cond_lit.condition) + list(rule_ast.body),
                             )
                         )
-                elif is_constraint(rule_ast) and self._last_trace_rule is not None:
-                    to_translate.append(
-                        ast.Rule(
-                            loc, _xclingo_constraint_head(rule_id, rule_ast.body), rule_ast.body
-                        )
-                    )
                 else:
-                    to_translate.append(rule_ast)
+                    support_rules.append(rule_ast)
 
-                for rule_ast in to_translate:
+                # Translates to support rules
+                for rule_ast in support_rules:
                     yield transformer_support_rule(rule_id, rule_ast)
-                    yield transformer_fbody_rule(rule_id, rule_ast)
                     if self._last_trace_rule is not None:
                         yield transformer_label_rule(rule_id, self._last_trace_rule, rule_ast.body)
 

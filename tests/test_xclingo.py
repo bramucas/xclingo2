@@ -56,16 +56,19 @@ class TestXclingo:
             test_case (str): name of the test case. It must match the one used in test_xclingo/ dir
             auto_tracing (str): xclingo auto_tracing mode.
         """
+        print(f"!! Testing {test_case}:", end="  ")
+
         xclingo_control.add("base", [], (datadir / f"{test_case}_test.lp").read_text())
         xclingo_control.ground([("base", [])])
+        print("GROUNDED", end="  ")
 
         buf = []
         for xmodel in xclingo_control.solve():
             for graph_model in xmodel.explain_model():
                 buf.append(frozenset(str(s) for s in graph_model.symbols(shown=True)))
         result = frozenset(buf)
+        print("SOLVED", end="  ")
 
-        print(f"!! - Testing {test_case} test case...  ", end="")
         expected = load((datadir / f"{test_case}_res.pickle").open("rb"))
         assert expected == result
         print("CORRECT")
