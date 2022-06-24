@@ -232,7 +232,7 @@ class XClingoPreprocessor(Preprocessor):
                 # Translates to support rules
                 for rule_ast in support_rules:
                     yield transformer_support_rule(rule_id, rule_ast)
-                    if self._last_trace_rule is not None:
-                        yield transformer_label_rule(rule_id, self._last_trace_rule, rule_ast.body)
 
-                self._last_trace_rule = None
+                if self._last_trace_rule is not None:
+                    yield transformer_label_rule(rule_id, self._last_trace_rule, rule_ast.body)
+                    self._last_trace_rule = None

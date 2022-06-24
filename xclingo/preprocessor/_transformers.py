@@ -292,10 +292,6 @@ def transformer_label_rule(
     Returns:
         ast.ASTType.Rule: final label rule.
     """ """"""
-    loc = ast.Location(
-        ast.Position("", 0, 0),
-        ast.Position("", 0, 0),
-    )
     head_var = ast.Variable(loc, "Head")
     head = ast.Literal(
         loc,
