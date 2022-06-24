@@ -8,3 +8,4 @@ q :- p.
 p :- q.
 
 %!show_trace p.
+%!show_trace q.

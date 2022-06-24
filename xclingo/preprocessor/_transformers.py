@@ -1,3 +1,4 @@
+from attr import has
 from clingo import ast, Number
 from typing import Sequence
 
@@ -131,23 +132,46 @@ def _fbody_head(rule_id: int, rule_ast: ast.ASTType.Rule):
     Returns:
         ast.AST: the head of the fbody rule.
     """ """"""
-    head = ast.Literal(
-        loc,
-        ast.Sign.NoSign,
-        ast.SymbolicAtom(
-            ast.Function(
+    head = rule_ast.head
+    if hasattr(head, "elements"):
+        # choice rule or disyunction
+        modified_elements = [
+            ast.ConditionalLiteral(
                 loc,
-                "_xclingo_fbody",
-                [
-                    ast.SymbolicTerm(loc, Number(rule_id)),
-                    rule_ast.head.atom,
-                    ast.Function(loc, "", list(propagates(rule_ast.body)), False),  # tuple
-                ],
-                False,
+                _fbody_head(rule_id, ast.Rule(loc, cond_lit.literal, rule_ast.body)),
+                cond_lit.condition,
+            )
+            for cond_lit in head.elements
+        ]
+        if head.ast_type == ast.ASTType.Aggregate:
+            return ast.Aggregate(
+                location=loc,
+                left_guard=head.left_guard,
+                right_guard=head.right_guard,
+                elements=modified_elements,
+            )
+        elif head.ast_type == ast.ASTType.Disjunction:
+            return ast.Disjunction(
+                location=loc,
+                elements=modified_elements,
+            )
+    else:
+        return ast.Literal(
+            loc,
+            ast.Sign.NoSign,
+            ast.SymbolicAtom(
+                ast.Function(
+                    loc,
+                    "_xclingo_fbody",
+                    [
+                        ast.SymbolicTerm(loc, Number(rule_id)),
+                        rule_ast.head.atom,
+                        ast.Function(loc, "", list(propagates(rule_ast.body)), False),  # tuple
+                    ],
+                    False,
+                ),
             ),
-        ),
-    )
-    return head
+        )
 
 
 def _fbody_body(lit_list: Sequence[ast.AST]):
