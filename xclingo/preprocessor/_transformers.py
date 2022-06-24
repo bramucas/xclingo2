@@ -77,7 +77,7 @@ def _sup_body(lit_list: Sequence[ast.AST]):
             yield lit
 
 
-def _sup_head(rule_id: int, rule_ast: ast.ASTType.Rule):
+def _sup_head(rule_id: int, disjunction_id: int, rule_ast: ast.ASTType.Rule):
     """Returns the head of the support rule, given the original rule.
 
     Args:
@@ -96,6 +96,7 @@ def _sup_head(rule_id: int, rule_ast: ast.ASTType.Rule):
                 "_xclingo_sup",
                 [
                     ast.SymbolicTerm(loc, Number(rule_id)),
+                    ast.SymbolicTerm(loc, Number(disjunction_id)),
                     rule_ast.head.atom,
                     ast.Function(loc, "", list(propagates(rule_ast.body)), False),  # tuple
                 ],
@@ -106,7 +107,7 @@ def _sup_head(rule_id: int, rule_ast: ast.ASTType.Rule):
     return head
 
 
-def transformer_support_rule(rule_id: int, rule_ast: ast.ASTType.Rule):
+def transformer_support_rule(rule_id: int, disjunction_id: int, rule_ast: ast.ASTType.Rule):
     """Returns the support rule, given the original rule.
 
     Args:
@@ -116,13 +117,13 @@ def transformer_support_rule(rule_id: int, rule_ast: ast.ASTType.Rule):
     Returns:
         ast.ASTType.Rule: the corresponding support rule.
     """
-    head = _sup_head(rule_id, rule_ast)
+    head = _sup_head(rule_id, disjunction_id, rule_ast)
     body = list(_sup_body(rule_ast.body))
 
     return ast.Rule(loc, head, body)
 
 
-def _fbody_head(rule_id: int, rule_ast: ast.ASTType.Rule):
+def _fbody_head(rule_id: int, disjunction_id: int, rule_ast: ast.ASTType.Rule):
     """Returns the head of the fbody rule, given the original rule.
 
     Args:
@@ -132,46 +133,23 @@ def _fbody_head(rule_id: int, rule_ast: ast.ASTType.Rule):
     Returns:
         ast.AST: the head of the fbody rule.
     """ """"""
-    head = rule_ast.head
-    if hasattr(head, "elements"):
-        # choice rule or disyunction
-        modified_elements = [
-            ast.ConditionalLiteral(
+    return ast.Literal(
+        loc,
+        ast.Sign.NoSign,
+        ast.SymbolicAtom(
+            ast.Function(
                 loc,
-                _fbody_head(rule_id, ast.Rule(loc, cond_lit.literal, rule_ast.body)),
-                cond_lit.condition,
-            )
-            for cond_lit in head.elements
-        ]
-        if head.ast_type == ast.ASTType.Aggregate:
-            return ast.Aggregate(
-                location=loc,
-                left_guard=head.left_guard,
-                right_guard=head.right_guard,
-                elements=modified_elements,
-            )
-        elif head.ast_type == ast.ASTType.Disjunction:
-            return ast.Disjunction(
-                location=loc,
-                elements=modified_elements,
-            )
-    else:
-        return ast.Literal(
-            loc,
-            ast.Sign.NoSign,
-            ast.SymbolicAtom(
-                ast.Function(
-                    loc,
-                    "_xclingo_fbody",
-                    [
-                        ast.SymbolicTerm(loc, Number(rule_id)),
-                        rule_ast.head.atom,
-                        ast.Function(loc, "", list(propagates(rule_ast.body)), False),  # tuple
-                    ],
-                    False,
-                ),
+                "_xclingo_fbody",
+                [
+                    ast.SymbolicTerm(loc, Number(rule_id)),
+                    ast.SymbolicTerm(loc, Number(disjunction_id)),
+                    rule_ast.head.atom,
+                    ast.Function(loc, "", list(propagates(rule_ast.body)), False),  # tuple
+                ],
+                False,
             ),
-        )
+        ),
+    )
 
 
 def _fbody_body(lit_list: Sequence[ast.AST]):
@@ -262,7 +240,7 @@ def _xclingo_constraint_head(rule_id: int, lit_list: Sequence[ast.AST]):
     )
 
 
-def transformer_fbody_rule(rule_id: int, rule_ast: ast.ASTType.Rule):
+def transformer_fbody_rule(rule_id: int, disjunction_id: int, rule_ast: ast.ASTType.Rule):
     """Returns the fbody rule, given the original rule.
 
     Args:
@@ -272,7 +250,7 @@ def transformer_fbody_rule(rule_id: int, rule_ast: ast.ASTType.Rule):
     Returns:
         ast.ASTType.Rule: the corresponding fbody rule.
     """
-    head = _fbody_head(rule_id, rule_ast)
+    head = _fbody_head(rule_id, disjunction_id, rule_ast)
     body = list(_fbody_body(rule_ast.body))
     return ast.Rule(loc, head, body)
 

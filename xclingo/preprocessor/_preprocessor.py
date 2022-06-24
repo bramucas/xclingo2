@@ -206,32 +206,35 @@ class XClingoPreprocessor(Preprocessor):
                 yield transformer_mute(rule_ast)
 
             else:
+
                 rule_id = self._increment_rule_count()
-                # Fake relaxed constraint rule
-                if is_constraint(rule_ast) and self._last_trace_rule is not None:
-                    rule_ast = ast.Rule(
-                        loc, _xclingo_constraint_head(rule_id, rule_ast.body), rule_ast.body
-                    )
-                # Translates fbody
-                yield transformer_fbody_rule(rule_id, rule_ast)
 
-                # Decices how much support rules we want to instantiate
-                support_rules = []
-                if is_choice_rule(rule_ast) or is_disyunctive_head(rule_ast):
+                if is_choice_rule(rule_ast):
                     for cond_lit in rule_ast.head.elements:
-                        support_rules.append(
-                            ast.Rule(
-                                loc,
-                                cond_lit.literal,
-                                list(cond_lit.condition) + list(rule_ast.body),
-                            )
+                        rule_ast = ast.Rule(
+                            loc, cond_lit.literal, list(cond_lit.condition) + list(rule_ast.body)
                         )
-                else:
-                    support_rules.append(rule_ast)
+                        yield transformer_fbody_rule(rule_id, 0, rule_ast)
+                        yield transformer_support_rule(rule_id, 0, rule_ast)
 
-                # Translates to support rules
-                for rule_ast in support_rules:
-                    yield transformer_support_rule(rule_id, rule_ast)
+                elif is_disyunctive_head(rule_ast):
+                    disjunction_id = 0
+                    for cond_lit in rule_ast.head.elements:
+                        rule_ast = ast.Rule(
+                            loc, cond_lit.literal, list(cond_lit.condition) + list(rule_ast.body)
+                        )
+                        yield transformer_fbody_rule(rule_id, disjunction_id, rule_ast)
+                        yield transformer_support_rule(rule_id, disjunction_id, rule_ast)
+                        disjunction_id += 1
+
+                else:
+                    # Fake relaxed constraint rule
+                    if is_constraint(rule_ast) and self._last_trace_rule is not None:
+                        rule_ast = ast.Rule(
+                            loc, _xclingo_constraint_head(rule_id, rule_ast.body), rule_ast.body
+                        )
+                    yield transformer_fbody_rule(rule_id, 0, rule_ast)
+                    yield transformer_support_rule(rule_id, 0, rule_ast)
 
                 if self._last_trace_rule is not None:
                     yield transformer_label_rule(rule_id, self._last_trace_rule, rule_ast.body)
