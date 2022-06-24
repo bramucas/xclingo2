@@ -165,6 +165,7 @@ class TestXClingoPreprocessor:
     @pytest.fixture(scope="class")
     def expected_support_rule(self, expected_sup_body):
         rule_id = 32
+        disjunction_id = 64
         loc = ast.Location(ast.Position("", 0, 0), ast.Position("", 0, 0))
         head = ast.Literal(
             loc,
@@ -175,6 +176,7 @@ class TestXClingoPreprocessor:
                     "_xclingo_sup",
                     [
                         ast.SymbolicTerm(loc, Number(rule_id)),
+                        ast.SymbolicTerm(loc, Number(disjunction_id)),
                         ast.SymbolicAtom(ast.Function(loc, "b", [], False)),
                         ast.Function(
                             loc,
@@ -201,11 +203,12 @@ class TestXClingoPreprocessor:
             ),
         )
         expected_sup_rule = ast.Rule(loc, head, expected_sup_body)
-        return rule_id, expected_sup_rule
+        return rule_id, disjunction_id, expected_sup_rule
 
     @pytest.fixture(scope="class")
     def expected_fbody_rule(self, expected_fbody_body):
         rule_id = 32
+        disjunction_id = 64
         loc = ast.Location(ast.Position("", 0, 0), ast.Position("", 0, 0))
         head = ast.Literal(
             loc,
@@ -216,6 +219,7 @@ class TestXClingoPreprocessor:
                     "_xclingo_fbody",
                     [
                         ast.SymbolicTerm(loc, Number(rule_id)),
+                        ast.SymbolicTerm(loc, Number(disjunction_id)),
                         ast.SymbolicAtom(ast.Function(loc, "b", [], False)),
                         ast.Function(
                             loc,
@@ -242,7 +246,7 @@ class TestXClingoPreprocessor:
             ),
         )
         expected_fbody_rule = ast.Rule(loc, head, expected_fbody_body)
-        return rule_id, expected_fbody_rule
+        return rule_id, disjunction_id, expected_fbody_rule
 
     @pytest.fixture(scope="class")
     def custom_label_rule(self):
@@ -744,16 +748,16 @@ class TestXClingoPreprocessor:
         assert expected_sup_body == list(_sup_body(custom_body))
 
     def test_sup_rule(self, custom_rule, expected_support_rule):
-        rule_id, expected = expected_support_rule
-        assert expected == transformer_support_rule(rule_id, custom_rule)
+        rule_id, disjunction_id, expected = expected_support_rule
+        assert expected == transformer_support_rule(rule_id, disjunction_id, custom_rule)
 
     def test_fbody_body(self, custom_body, expected_fbody_body):
         body = list(_fbody_body(custom_body))
         assert expected_fbody_body == body
 
     def test_fbody_rule(self, custom_rule, expected_fbody_rule):
-        rule_id, expected = expected_fbody_rule
-        assert expected == transformer_fbody_rule(rule_id, custom_rule)
+        rule_id, disjunction_id, expected = expected_fbody_rule
+        assert expected == transformer_fbody_rule(rule_id, disjunction_id, custom_rule)
 
     def test_label_rule(self, custom_label_rule, expected_label_rule, custom_body):
         rule_id, expected = expected_label_rule
