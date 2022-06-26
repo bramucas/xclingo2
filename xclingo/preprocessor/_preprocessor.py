@@ -17,6 +17,8 @@ from ._transformers import (
     transformer_label_atom,
     transformer_show_trace,
     transformer_mute,
+    transformer_depends_rule,
+    transformer_direct_cause,
     _xclingo_constraint_head,
     loc,
 )
@@ -172,6 +174,16 @@ class XClingoPreprocessor(Preprocessor):
         self._rule_count += 1
         return n
 
+    def translate_rules(self, rule_id: int, disyunction_id: int, rule_ast: ast.ASTType.Rule):
+        fbody_rule = transformer_fbody_rule(rule_id, disyunction_id, rule_ast)
+        yield fbody_rule
+        for dep_rule in transformer_direct_cause(fbody_rule.head, fbody_rule.body):
+            yield dep_rule
+        sup_rule = transformer_support_rule(rule_id, disyunction_id, rule_ast)
+        yield sup_rule
+        for dep_rule in transformer_depends_rule(sup_rule.head, sup_rule.body):
+            yield dep_rule
+
     def preprocess_rule(self, rule_ast: ast.ASTType.Rule):
         """Translates a given rule into its xclingo translation and adds it to the translation.
         Before every addition, a comment containing the original rule is also added.
@@ -184,7 +196,6 @@ class XClingoPreprocessor(Preprocessor):
         # Ignore #shows
         if rule_ast.ast_type == ast.ASTType.ShowSignature:
             return
-
         # TODO: what to do with externals?
         # TODO: which other things
         self._add_comment_to_translation(rule_ast)
@@ -206,7 +217,6 @@ class XClingoPreprocessor(Preprocessor):
                 yield transformer_mute(rule_ast)
 
             else:
-
                 rule_id = self._increment_rule_count()
 
                 if is_choice_rule(rule_ast):
@@ -214,8 +224,8 @@ class XClingoPreprocessor(Preprocessor):
                         rule_ast = ast.Rule(
                             loc, cond_lit.literal, list(cond_lit.condition) + list(rule_ast.body)
                         )
-                        yield transformer_fbody_rule(rule_id, 0, rule_ast)
-                        yield transformer_support_rule(rule_id, 0, rule_ast)
+                        for r in self.translate_rules(rule_id, 0, rule_ast):
+                            yield r
 
                 elif is_disyunctive_head(rule_ast):
                     disjunction_id = 0
@@ -223,8 +233,8 @@ class XClingoPreprocessor(Preprocessor):
                         rule_ast = ast.Rule(
                             loc, cond_lit.literal, list(cond_lit.condition) + list(rule_ast.body)
                         )
-                        yield transformer_fbody_rule(rule_id, disjunction_id, rule_ast)
-                        yield transformer_support_rule(rule_id, disjunction_id, rule_ast)
+                        for r in self.translate_rules(rule_id, disjunction_id, rule_ast):
+                            yield r
                         disjunction_id += 1
 
                 else:
@@ -233,8 +243,8 @@ class XClingoPreprocessor(Preprocessor):
                         rule_ast = ast.Rule(
                             loc, _xclingo_constraint_head(rule_id, rule_ast.body), rule_ast.body
                         )
-                    yield transformer_fbody_rule(rule_id, 0, rule_ast)
-                    yield transformer_support_rule(rule_id, 0, rule_ast)
+                    for r in self.translate_rules(rule_id, 0, rule_ast):
+                        yield r
 
                 if self._last_trace_rule is not None:
                     yield transformer_label_rule(rule_id, self._last_trace_rule, rule_ast.body)

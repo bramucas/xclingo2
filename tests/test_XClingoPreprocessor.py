@@ -181,20 +181,7 @@ class TestXClingoPreprocessor:
                         ast.Function(
                             loc,
                             "",
-                            [
-                                ast.Literal(
-                                    loc,
-                                    ast.Sign.NoSign,
-                                    ast.SymbolicAtom(
-                                        ast.Function(loc, "person", [ast.Variable(loc, "P")], False)
-                                    ),
-                                ),
-                                ast.Literal(
-                                    loc,
-                                    ast.Sign.NoSign,
-                                    ast.SymbolicAtom(ast.Function(loc, "hola", [], False)),
-                                ),
-                            ],
+                            [ast.Variable(loc, "P")],
                             False,
                         ),
                     ],
@@ -224,20 +211,7 @@ class TestXClingoPreprocessor:
                         ast.Function(
                             loc,
                             "",
-                            [
-                                ast.Literal(
-                                    loc,
-                                    ast.Sign.NoSign,
-                                    ast.SymbolicAtom(
-                                        ast.Function(loc, "person", [ast.Variable(loc, "P")], False)
-                                    ),
-                                ),
-                                ast.Literal(
-                                    loc,
-                                    ast.Sign.NoSign,
-                                    ast.SymbolicAtom(ast.Function(loc, "hola", [], False)),
-                                ),
-                            ],
+                            [ast.Variable(loc, "P")],
                             False,
                         ),
                     ],
@@ -341,26 +315,12 @@ class TestXClingoPreprocessor:
                             "_xclingo_f",
                             [
                                 ast.SymbolicTerm(loc, Number(rule_id)),
+                                ast.Variable(loc, "DisID"),
                                 head_var,
                                 ast.Function(
                                     loc,
                                     "",
-                                    [
-                                        ast.Literal(
-                                            loc,
-                                            ast.Sign.NoSign,
-                                            ast.SymbolicAtom(
-                                                ast.Function(
-                                                    loc, "person", [ast.Variable(loc, "P")], False
-                                                )
-                                            ),
-                                        ),
-                                        ast.Literal(
-                                            loc,
-                                            ast.Sign.NoSign,
-                                            ast.SymbolicAtom(ast.Function(loc, "hola", [], False)),
-                                        ),
-                                    ],
+                                    [ast.Variable(loc, "P")],
                                     False,
                                 ),
                             ],
@@ -749,6 +709,8 @@ class TestXClingoPreprocessor:
 
     def test_sup_rule(self, custom_rule, expected_support_rule):
         rule_id, disjunction_id, expected = expected_support_rule
+        print(expected)
+        print(transformer_support_rule(rule_id, disjunction_id, custom_rule))
         assert expected == transformer_support_rule(rule_id, disjunction_id, custom_rule)
 
     def test_fbody_body(self, custom_body, expected_fbody_body):

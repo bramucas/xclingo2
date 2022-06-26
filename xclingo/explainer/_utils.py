@@ -15,17 +15,3 @@ class XClingoContext:
         for val in tup.arguments:
             text = text.replace("%", val.string if val.type == SymbolType.String else str(val), 1)
         return [String(text)]
-
-    def inbody(self, body):
-        """Handles the inbody/2 predicate from the xclingo_lp program."""
-        if len(body.arguments) > 0:
-            return [
-                Function(
-                    "",
-                    [a, body],
-                    True,
-                )
-                for a in body.arguments
-            ]
-        else:
-            return Function("empty", [], True)
