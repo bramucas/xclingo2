@@ -1,13 +1,13 @@
 %%%%%%%%%%%%%% xclingo_graph.lp %%%%%%%%%%%%%%%%%
 
-% Complete explanation graph (includes non labelled atoms)
+% Complete explanation graph (handles %!mute) (includes non labelled atoms)
 _xclingo_graph(complete_explanation).
-_xclingo_node(Atom, complete_explanation) :- _xclingo_audible(Atom).  %TODO: remove f_atom in favor of node
+_xclingo_node(ToExplainAtom, complete_explanation) :- _xclingo_show_trace(ToExplainAtom), not _xclingo_muted(ToExplainAtom).
 _xclingo_edge((Caused, Cause), complete_explanation) :-
-    _xclingo_inbody((Cause, Body)), 
-    _xclingo_f(_, Caused, Body),
-    _xclingo_f(_, Cause, _),
-    _xclingo_audible(Cause).
+    _xclingo_node(Caused, complete_explanation),
+    _xclingo_direct_cause(Caused, Cause),
+    not _xclingo_muted(Cause).
+_xclingo_node(Atom, complete_explanation) :- _xclingo_edge((_, Atom), complete_explanation).
 
 % Compressing graph (only labelled; and show_trace Atoms even if they are not labelled)
 _xclingo_visible(X) :- _xclingo_node(X, complete_explanation), _xclingo_label(X, _).

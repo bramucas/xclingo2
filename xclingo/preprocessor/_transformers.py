@@ -1,5 +1,6 @@
+from ast import AST
 from attr import has
-from clingo import ast, Number
+from clingo import Function, ast, Number
 from typing import Sequence
 
 # TODO: fix location
@@ -23,6 +24,29 @@ def propagates(lit_list: Sequence[ast.AST]):
     for lit in lit_list:
         if lit.sign == ast.Sign.NoSign and lit.atom.ast_type == ast.ASTType.SymbolicAtom:
             yield lit
+
+
+def collect_free_vars(lit_list: Sequence[ast.AST]):
+    seen_vars = set()
+    for lit in lit_list:
+        # Skip negative literals
+        if lit.sign != ast.Sign.NoSign:
+            continue
+        var_name = None
+        # handle comparisons
+        if lit.atom.ast_type == ast.ASTType.Comparison:
+            if lit.atom.left.ast_type == ast.ASTType.Variable:
+                seen_vars.add(str(lit.atom.left.name))
+            if lit.atom.right.ast_type == ast.ASTType.Variable:
+                seen_vars.add(str(lit.atom.right.name))
+        # handle positive body literals
+        if lit.atom.ast_type == ast.ASTType.SymbolicAtom:
+            for arg in lit.atom.symbol.arguments:
+                if arg.ast_type == ast.ASTType.Variable:
+                    seen_vars.add(str(arg.name))
+
+    for var_name in seen_vars:
+        yield ast.Variable(loc, var_name)
 
 
 def _sup_body(lit_list: Sequence[ast.AST]):
@@ -98,7 +122,7 @@ def _sup_head(rule_id: int, disjunction_id: int, rule_ast: ast.ASTType.Rule):
                     ast.SymbolicTerm(loc, Number(rule_id)),
                     ast.SymbolicTerm(loc, Number(disjunction_id)),
                     rule_ast.head.atom,
-                    ast.Function(loc, "", list(propagates(rule_ast.body)), False),  # tuple
+                    ast.Function(loc, "", list(collect_free_vars(rule_ast.body)), False),  # tuple
                 ],
                 False,
             ),
@@ -144,7 +168,7 @@ def _fbody_head(rule_id: int, disjunction_id: int, rule_ast: ast.ASTType.Rule):
                     ast.SymbolicTerm(loc, Number(rule_id)),
                     ast.SymbolicTerm(loc, Number(disjunction_id)),
                     rule_ast.head.atom,
-                    ast.Function(loc, "", list(propagates(rule_ast.body)), False),  # tuple
+                    ast.Function(loc, "", list(collect_free_vars(rule_ast.body)), False),  # tuple
                 ],
                 False,
             ),
@@ -293,11 +317,12 @@ def transformer_label_rule(
                     "_xclingo_f",
                     [
                         ast.SymbolicTerm(loc, Number(rule_id)),
+                        ast.Variable(loc, "DisID"),
                         head_var,
                         ast.Function(
                             loc,
                             "",
-                            list(propagates(rule_body)),
+                            list(collect_free_vars(rule_body)),
                             False,
                         ),
                     ],
@@ -368,5 +393,59 @@ def transformer_mute(rule_ast: ast.ASTType.Rule):
         ast.Sign.NoSign,
         ast.SymbolicAtom(rule_ast.head.atom.symbol.arguments[0]),
     )
-    rule = ast.Rule(loc, rule_ast.head, list(_sup_body([literal_head] + list(rule_ast.body))))
-    return rule
+    return ast.Rule(loc, rule_ast.head, list(_sup_body([literal_head] + list(rule_ast.body))))
+
+
+def transformer_direct_cause(head: ast.ASTType.Literal, cause_candidates: Sequence[AST]):
+    causes = [dep.atom.symbol.arguments[0] for dep in propagates(cause_candidates)]
+    if causes:
+        yield ast.Rule(
+            location=loc,
+            head=ast.Literal(
+                loc,
+                ast.Sign.NoSign,
+                ast.SymbolicAtom(
+                    ast.Function(
+                        loc,
+                        "_xclingo_direct_cause",
+                        [head.atom.symbol.arguments[2], ast.Pool(loc, causes)],
+                        False,
+                    )
+                ),
+            ),
+            body=[
+                ast.Literal(
+                    loc,
+                    ast.Sign.NoSign,
+                    ast.SymbolicAtom(
+                        ast.Function(
+                            loc,
+                            "_xclingo_f",
+                            head.atom.symbol.arguments,
+                            False,
+                        )
+                    ),
+                )
+            ],
+        )
+
+
+def transformer_depends_rule(head: ast.ASTType.Literal, cause_candidates: Sequence[AST]):
+    causes = [dep.atom.symbol.arguments[0] for dep in propagates(cause_candidates)]
+    if causes:
+        yield ast.Rule(
+            loc,
+            head=ast.Literal(
+                loc,
+                ast.Sign.NoSign,
+                ast.SymbolicAtom(
+                    ast.Function(
+                        loc,
+                        f"_xclingo_sup_cause",
+                        [head.atom.symbol, ast.Pool(loc, causes)],
+                        False,
+                    )
+                ),
+            ),
+            body=[head],
+        )
