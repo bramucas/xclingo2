@@ -26,6 +26,23 @@ def propagates(lit_list: Sequence[ast.AST]):
             yield lit
 
 
+def aggregates(lit_list: Sequence[ast.AST]):
+    """Captures the part of a body that is an aggregate.
+    This is, the positive part of the body of a rule. Comparison literals are ignored.
+
+    Args:
+        lit_list (Sequence[ast.AST]): list of literals to be processed. Normally
+        a rule's body.
+
+    Yields:
+        ast.AST: literals that are aggregates.
+    """
+    for lit in lit_list:
+        if lit.sign == ast.Sign.NoSign and lit.atom.ast_type == ast.ASTType.BodyAggregate:
+            for e in lit.atom.elements:
+                yield e
+
+
 def collect_free_vars(lit_list: Sequence[ast.AST]):
     seen_vars = set()
     for lit in lit_list:
@@ -428,6 +445,47 @@ def transformer_direct_cause(head: ast.ASTType.Literal, cause_candidates: Sequen
                 )
             ],
         )
+    agg_elements = aggregates(cause_candidates)
+    for agg_elem in agg_elements:
+        yield ast.Rule(
+            location=loc,
+            head=ast.Literal(
+                loc,
+                ast.Sign.NoSign,
+                ast.SymbolicAtom(
+                    ast.Function(
+                        loc,
+                        "_xclingo_direct_cause",
+                        [
+                            head.atom.symbol.arguments[2],
+                            ast.Pool(
+                                loc,
+                                [
+                                    dep.atom.symbol.arguments[0]
+                                    for dep in propagates(agg_elem.condition)
+                                ],
+                            ),
+                        ],
+                        False,
+                    )
+                ),
+            ),
+            body=list(agg_elem.condition)
+            + [
+                ast.Literal(
+                    loc,
+                    ast.Sign.NoSign,
+                    ast.SymbolicAtom(
+                        ast.Function(
+                            loc,
+                            "_xclingo_f",
+                            head.atom.symbol.arguments,
+                            False,
+                        )
+                    ),
+                )
+            ],
+        )
 
 
 def transformer_depends_rule(head: ast.ASTType.Literal, cause_candidates: Sequence[AST]):
@@ -448,4 +506,31 @@ def transformer_depends_rule(head: ast.ASTType.Literal, cause_candidates: Sequen
                 ),
             ),
             body=[head],
+        )
+    agg_elements = aggregates(cause_candidates)
+    for agg_elem in agg_elements:
+        yield ast.Rule(
+            loc,
+            ast.Literal(
+                loc,
+                ast.Sign.NoSign,
+                ast.SymbolicAtom(
+                    ast.Function(
+                        loc,
+                        f"_xclingo_sup_cause",
+                        [
+                            head.atom.symbol,
+                            ast.Pool(
+                                loc,
+                                [
+                                    dep.atom.symbol.arguments[0]
+                                    for dep in propagates(agg_elem.condition)
+                                ],
+                            ),
+                        ],
+                        False,
+                    )
+                ),
+            ),
+            body=list(agg_elem.condition) + [head],
         )
