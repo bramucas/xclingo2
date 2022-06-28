@@ -1,7 +1,11 @@
 numberObjectsbyEntityatTime(N,E,T):- N=#count{O: held_by(O,E,T)}, entity(E),time(T).
 
-time(T):-held_by(O,E,T).
-entity(E):-held_by(O,E,T).
+% for this reason it would be cool to have some sort of mute_rule
+% time(T):-held_by(O,E,T).
+% entity(E):-held_by(O,E,T).
+
+time(0;1).
+entity(mary;john;brais).
 
 held_by(football,mary,0).
 held_by(football,mary,0).
