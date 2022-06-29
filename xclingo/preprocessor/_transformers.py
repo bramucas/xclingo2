@@ -1,4 +1,5 @@
 from ast import AST
+from re import S
 from attr import has
 from clingo import Function, ast, Number
 from typing import Sequence
@@ -22,13 +23,16 @@ def propagates(lit_list: Sequence[ast.AST]):
         ast.AST: literals that propagate cause.
     """
     for lit in lit_list:
-        if lit.sign == ast.Sign.NoSign and lit.atom.ast_type == ast.ASTType.SymbolicAtom:
+        if (
+            lit.ast_type != ast.ASTType.ConditionalLiteral
+            and lit.sign == ast.Sign.NoSign
+            and lit.atom.ast_type == ast.ASTType.SymbolicAtom
+        ):
             yield lit
 
 
 def aggregates(lit_list: Sequence[ast.AST]):
     """Captures the part of a body that is an aggregate.
-    This is, the positive part of the body of a rule. Comparison literals are ignored.
 
     Args:
         lit_list (Sequence[ast.AST]): list of literals to be processed. Normally
@@ -38,26 +42,50 @@ def aggregates(lit_list: Sequence[ast.AST]):
         ast.AST: literals that are aggregates.
     """
     for lit in lit_list:
-        if lit.sign == ast.Sign.NoSign and lit.atom.ast_type == ast.ASTType.BodyAggregate:
+        if (
+            lit.ast_type != ast.ASTType.ConditionalLiteral
+            and lit.sign == ast.Sign.NoSign
+            and lit.atom.ast_type == ast.ASTType.BodyAggregate
+        ):
             for e in lit.atom.elements:
                 yield e
+
+
+def conditional_literals(lit_list: Sequence[ast.AST]):
+    """Captures the part of a body that is a conditional literal.
+
+    Args:
+        lit_list (Sequence[ast.AST]): list of literals to be processed. Normally
+        a rule's body.
+
+    Yields:
+        ast.AST: literals that are conditional literals.
+    """
+    for lit in lit_list:
+        if lit.ast_type == ast.ASTType.ConditionalLiteral:
+            yield lit
 
 
 def collect_free_vars(lit_list: Sequence[ast.AST]):
     seen_vars = set()
     for lit in lit_list:
-        # Skip negative literals
-        if lit.sign != ast.Sign.NoSign:
+        # handle conditional literals
+        if lit.ast_type == ast.ASTType.ConditionalLiteral:
             continue
-        var_name = None
+
         # handle comparisons
-        if lit.atom.ast_type == ast.ASTType.Comparison:
+        elif lit.atom.ast_type == ast.ASTType.Comparison:
             if lit.atom.left.ast_type == ast.ASTType.Variable:
                 seen_vars.add(str(lit.atom.left.name))
             if lit.atom.right.ast_type == ast.ASTType.Variable:
                 seen_vars.add(str(lit.atom.right.name))
+
+        # Skip negative literals
+        elif lit.sign != ast.Sign.NoSign:
+            continue
+
         # handle positive body literals
-        if lit.atom.ast_type == ast.ASTType.SymbolicAtom:
+        elif lit.atom.ast_type == ast.ASTType.SymbolicAtom:
             for arg in lit.atom.symbol.arguments:
                 if arg.ast_type == ast.ASTType.Variable:
                     seen_vars.add(str(arg.name))
@@ -113,6 +141,24 @@ def _sup_body(lit_list: Sequence[ast.AST]):
 
             else:
                 yield lit
+
+        elif lit.ast_type == ast.ASTType.ConditionalLiteral:
+            yield ast.ConditionalLiteral(
+                loc,
+                literal=ast.Literal(
+                    loc,
+                    lit.literal.sign,
+                    ast.SymbolicAtom(
+                        ast.Function(
+                            loc,
+                            "_xclingo_model",
+                            [lit.literal.atom.symbol],
+                            False,
+                        )
+                    ),
+                ),
+                condition=list(_sup_body(lit.condition)),
+            )
 
         else:
             yield lit
@@ -254,6 +300,24 @@ def _fbody_body(lit_list: Sequence[ast.AST]):
 
             else:
                 yield lit
+
+        elif lit.ast_type == ast.ASTType.ConditionalLiteral:
+            yield ast.ConditionalLiteral(
+                loc,
+                literal=ast.Literal(
+                    loc,
+                    lit.literal.sign,
+                    ast.SymbolicAtom(
+                        ast.Function(
+                            loc,
+                            "_xclingo_f_atom",
+                            [lit.literal.atom.symbol],
+                            False,
+                        )
+                    ),
+                ),
+                condition=list(_sup_body(lit.condition)),
+            )
         else:
             yield lit
 
@@ -445,8 +509,7 @@ def transformer_direct_cause(head: ast.ASTType.Literal, cause_candidates: Sequen
                 )
             ],
         )
-    agg_elements = aggregates(cause_candidates)
-    for agg_elem in agg_elements:
+    for agg_elem in aggregates(cause_candidates):
         yield ast.Rule(
             location=loc,
             head=ast.Literal(
@@ -486,6 +549,41 @@ def transformer_direct_cause(head: ast.ASTType.Literal, cause_candidates: Sequen
                 )
             ],
         )
+    for cond_lit in conditional_literals(cause_candidates):
+        yield ast.Rule(
+            loc,
+            ast.Literal(
+                loc,
+                ast.Sign.NoSign,
+                ast.SymbolicAtom(
+                    ast.Function(
+                        loc,
+                        f"_xclingo_direct_cause",
+                        [
+                            head.atom.symbol.arguments[2],
+                            cond_lit.literal.atom.symbol.arguments[0],
+                            # TODO: should this be a pool with the literals in the condition?
+                        ],
+                        False,
+                    )
+                ),
+            ),
+            body=list(cond_lit.condition)
+            + [
+                ast.Literal(
+                    loc,
+                    ast.Sign.NoSign,
+                    ast.SymbolicAtom(
+                        ast.Function(
+                            loc,
+                            "_xclingo_f",
+                            head.atom.symbol.arguments,
+                            False,
+                        )
+                    ),
+                )
+            ],
+        )
 
 
 def transformer_depends_rule(head: ast.ASTType.Literal, cause_candidates: Sequence[AST]):
@@ -507,8 +605,7 @@ def transformer_depends_rule(head: ast.ASTType.Literal, cause_candidates: Sequen
             ),
             body=[head],
         )
-    agg_elements = aggregates(cause_candidates)
-    for agg_elem in agg_elements:
+    for agg_elem in aggregates(cause_candidates):
         yield ast.Rule(
             loc,
             ast.Literal(
@@ -533,4 +630,25 @@ def transformer_depends_rule(head: ast.ASTType.Literal, cause_candidates: Sequen
                 ),
             ),
             body=list(agg_elem.condition) + [head],
+        )
+    for cond_lit in conditional_literals(cause_candidates):
+        yield ast.Rule(
+            loc,
+            ast.Literal(
+                loc,
+                ast.Sign.NoSign,
+                ast.SymbolicAtom(
+                    ast.Function(
+                        loc,
+                        f"_xclingo_sup_cause",
+                        [
+                            head.atom.symbol,
+                            cond_lit.literal.atom.symbol.arguments[0],
+                            # TODO: should this be a pool with the literals in the condition?
+                        ],
+                        False,
+                    )
+                ),
+            ),
+            body=list(cond_lit.condition) + [head],
         )
