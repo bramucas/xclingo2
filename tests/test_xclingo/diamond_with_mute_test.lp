@@ -8,12 +8,12 @@ b(N) :- p(N), N<M,max(M).
 p(N+1) :- a(N), N<M,max(M).
 p(N+1) :- b(N), N<M,max(M).
 
-%!trace {"p(%)",N} p(N).
-%!trace {"a(%)", N} a(N).
-%!trace {"b(%)", N} b(N).
-%!show_trace p(N): max(N).
+%!trace {p(N), "p(%)", N} :- p(N).
+%!trace {a(N), "a(%)", N} :- a(N).
+%!trace {b(N), "b(%)", N} :- b(N).
+%!show_trace {p(N)} :- max(N).
 
 % enable/disable the %!mute annotations and see the effects
 % --> add/delete 'spaces' between '%' and '!'
-%!mute p(3).
+%!mute {p(3)}.
 

@@ -1,98 +1,114 @@
 import re
 from clingo import ast
 
+from ._transformers import _sup_body
 
-def translate_trace(program):
-    """
-    Replaces the 'label_rule' magic comments in the given program for a version of the rules labelled with theory atoms.
-    @param str program: the program that is intended to be modified.
-    @return str:
-    """
-    for hit in re.findall('(%!trace_rule \{(".*")(?:,(.*))?\}[ ]*[\n ]*)', program):
-        # 0: original match  1: label text  2: label parameters  3: head of the rule  4: body of the rule
-        program = program.replace(
-            hit[0],
-            "{name}(id, @label({text}, ({parameters},) )).\n".format(
-                text=hit[1], parameters=hit[2] if hit[2] else "", name="_xclingo_label"
+loc = ast.Location(
+    ast.Position("", 0, 0),
+    ast.Position("", 0, 0),
+)
+
+
+def translate_trace(theory_trace_rule: ast.AST):
+    theory_terms = theory_trace_rule.head.elements[0].terms
+    return ast.Rule(
+        location=loc,
+        head=ast.Literal(
+            location=loc,
+            sign=ast.Sign.NoSign,
+            atom=ast.SymbolicAtom(
+                ast.Function(
+                    location=loc,
+                    name="_xclingo_label",
+                    arguments=[
+                        ast.Function(loc, "id", [], False),
+                        ast.Function(
+                            location=loc,
+                            name="label",
+                            arguments=[
+                                theory_terms[0],
+                                ast.Function(loc, "", theory_terms[1:], False),
+                            ],
+                            external=True,
+                        ),
+                    ],
+                    external=False,
+                )
             ),
-        )
+        ),
+        body=[],
+    )
 
-    return program
 
-
-def translate_trace_all(program):
-    """
-    Replaces the 'label_atoms' magic comments in the given program for label_atoms rule.
-    @param str program: the program that is intended to be modified
-    @return str:
-    """
-    for hit in re.findall(
-        '(%!trace \{(".*")(?:,(.*))?\} (\-?[_a-z][_a-zA-Z0-9]*(?:\((?:[\-\+a-zA-Z0-9 \(\)\,\_])+\))?)(?:[ ]*:[ ]*(.*))?\.)',
-        program,
-    ):
-        # 0: original match 1: "label" 2:v1,v2  3: head  4: body.
-        program = program.replace(
-            hit[0],
-            "{name}({head}, @label({text}, ({parameters},)) ){body}.".format(
-                head=hit[3],
-                text=hit[1],
-                parameters=hit[2],
-                body=(" :- " + hit[4]) if hit[4] else "",
-                name="_xclingo_label",
+def translate_trace_all(theory_trace_rule: ast.AST):
+    theory_terms = theory_trace_rule.head.elements[0].terms
+    return ast.Rule(
+        location=loc,
+        head=ast.Literal(
+            location=loc,
+            sign=ast.Sign.NoSign,
+            atom=ast.SymbolicAtom(
+                ast.Function(
+                    location=loc,
+                    name="_xclingo_label",
+                    arguments=[
+                        theory_terms[0],
+                        ast.Function(
+                            location=loc,
+                            name="label",
+                            arguments=[
+                                theory_terms[1],
+                                ast.Function(loc, "", theory_terms[2:], False),
+                            ],
+                            external=True,
+                        ),
+                    ],
+                    external=False,
+                )
             ),
-        )
+        ),
+        body=theory_trace_rule.body,
+    )
 
-    return program
 
-
-def translate_show_all(program):
-    """
-    Replaces 'explain' magic comments in the given program for a rule version of those magic comments.
-    @param str program:
-    @return:
-    """
-    for hit in re.findall(
-        "(%!show_trace ((\-)?([_a-z][_a-zA-Z0-9]*(?:\((?:[\-a-zA-Z0-9 \(\)\,\_])+\))?)(?:[ ]*:[ ]*(.*))?\.))",
-        program,
-    ):
-        # 0: original match  1: rule  2: negative_sign  3: head of the rule  4: body of the rule
-        program = program.replace(
-            hit[0],
-            "{name}({classic_negation}{head}){body}.".format(
-                sign="" if not hit[2] else "n",
-                name="_xclingo_show_trace",
-                head=hit[3],
-                classic_negation="" if not hit[2] else "-",
-                body=" :- " + hit[4] if hit[4] else "",
+def translate_show_all(theory_trace_rule: ast.AST):
+    theory_terms = theory_trace_rule.head.elements[0].terms
+    return ast.Rule(
+        location=loc,
+        head=ast.Literal(
+            location=loc,
+            sign=ast.Sign.NoSign,
+            atom=ast.SymbolicAtom(
+                ast.Function(
+                    location=loc,
+                    name="_xclingo_show_trace",
+                    arguments=[theory_terms[0]],
+                    external=False,
+                )
             ),
-        )
+        ),
+        body=theory_trace_rule.body,
+    )
 
-    return program
 
-
-def translate_mute(program):
-    """
-    Replaces 'explain' magic comments in the given program for a rule version of those magic comments.
-    @param str program:
-    @return:
-    """
-    for hit in re.findall(
-        "(%!mute ((\-)?([_a-z][_a-zA-Z0-9]*(?:\((?:[\-a-zA-Z0-9 \(\)\,\_])+\))?)(?:[ ]*:[ ]*(.*))?\.))",
-        program,
-    ):
-        # 0: original match  1: rule  2: negative_sign  3: head of the rule  4: body of the rule
-        program = program.replace(
-            hit[0],
-            "{name}({classic_negation}{head}){body}.".format(
-                sign="" if not hit[2] else "n",
-                name="_xclingo_muted",
-                head=hit[3],
-                classic_negation="" if not hit[2] else "-",
-                body=" :- " + hit[4] if hit[4] else "",
+def translate_mute(theory_trace_rule: ast.AST):
+    theory_terms = theory_trace_rule.head.elements[0].terms
+    return ast.Rule(
+        location=loc,
+        head=ast.Literal(
+            location=loc,
+            sign=ast.Sign.NoSign,
+            atom=ast.SymbolicAtom(
+                ast.Function(
+                    location=loc,
+                    name="_xclingo_muted",
+                    arguments=[theory_terms[0]],
+                    external=False,
+                )
             ),
-        )
-
-    return program
+        ),
+        body=theory_trace_rule.body,
+    )
 
 
 def is_constraint(rule_ast):

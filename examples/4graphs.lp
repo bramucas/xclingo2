@@ -8,5 +8,5 @@ q :- p.
 
 q :- c.
 
-%!show_trace p.
-%!show_trace q.
+%!show_trace{p}.
+%!show_trace{q}.

@@ -9,6 +9,6 @@ held_by(apple,mary,0).
 held_by(football,mary,1).
 held_by(football,john,1).
 
-%!trace {"% is holding % items at time point %", E,N,T} numberObjectsbyEntityatTime(N,E,T).
-%!trace {"% holding % at %", E, N, T} held_by(E,N,T).
-%!show_trace numberObjectsbyEntityatTime(N,E,T).
+%!trace {numberObjectsbyEntityatTime(N,E,T), "% is holding % items at time point %", E,N,T} :- numberObjectsbyEntityatTime(N,E,T).
+%!trace {held_by(E,N,T), "% holding % at %", E, N, T} :- held_by(E,N,T).
+%!show_trace {numberObjectsbyEntityatTime(N,E,T)} :- numberObjectsbyEntityatTime(N,E,T).

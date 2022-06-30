@@ -8,6 +8,10 @@ from ._utils import (
     is_xclingo_mute,
     is_constraint,
     is_disyunctive_head,
+    translate_trace,
+    translate_trace_all,
+    translate_show_all,
+    translate_mute,
 )
 
 from ._transformers import (
@@ -67,20 +71,30 @@ class Preprocessor:
 
 
 class XClingoAnnotationPreprocessor(Preprocessor):
-    def __init__(self, func: Callable) -> None:
+    def __init__(self) -> None:
         super().__init__()
-        self.func = func
 
     def reset(self) -> None:
         super().reset()
 
     def preprocess_rule(self, rule_ast: ast.AST) -> None:
-        pass
+        if (
+            rule_ast.ast_type == ast.ASTType.Rule
+            and rule_ast.head.ast_type == ast.ASTType.TheoryAtom
+        ):
+            name = rule_ast.head.term.name
+            if name == "trace_rule":
+                rule_ast = translate_trace(rule_ast)
+            elif name == "trace":
+                rule_ast = translate_trace_all(rule_ast)
+            elif name == "show_trace":
+                rule_ast = translate_show_all(rule_ast)
+            elif name == "mute":
+                rule_ast = translate_mute(rule_ast)
+        yield rule_ast
 
     def process_program(self, program: str):
-        self._translation = ""
-        self._translation += self.func(program)
-        return self._translation
+        return super().process_program(program.replace("%!", "&"))
 
 
 class ConstraintRelaxer(Preprocessor):

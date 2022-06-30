@@ -10,13 +10,13 @@ friend(robert,manuel).
 friend(robert,gabriel).
 friend(robert,clare).
 
-%!trace_rule {"% has at least 3 friends",X}
+%!trace_rule {"% has at least 3 friends",X}.
 has3(X) :- #count{Y: friend(X,Y), Y!=X}>=3, person(X).
-%!trace_rule {"% is happy", X}
+%!trace_rule {"% is happy", X}.
 happy(X) :- healthy(X), has3(X).
 
-%!trace {"% and % are friends", X, Y} friend(X,Y).
-%!trace {"% is healthy", X} healthy(X).
+%!trace {friend(X,Y), "% and % are friends", X, Y} :- friend(X,Y).
+%!trace {healthy(X), "% is healthy", X} :- healthy(X).
 
-%!show_trace happy(X).
+%!show_trace {happy(X)} :- happy(X).
 #show happy/1.
