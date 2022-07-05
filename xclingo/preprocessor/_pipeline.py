@@ -28,15 +28,12 @@ class PreprocessorPipeline:
 class ConstraintRelaxerPipeline(PreprocessorPipeline):
     def __init__(self):
         super().__init__()
-        self.register_preprocessor(XClingoAnnotationPreprocessor(translate_trace))
+        self.register_preprocessor(XClingoAnnotationPreprocessor())
         self.register_preprocessor(ConstraintRelaxer(preserve_labels=False))
 
 
 class DefaultExplainingPipeline(PreprocessorPipeline):
     def __init__(self):
         super().__init__()
-        self.register_preprocessor(XClingoAnnotationPreprocessor(translate_show_all))
-        self.register_preprocessor(XClingoAnnotationPreprocessor(translate_trace))
-        self.register_preprocessor(XClingoAnnotationPreprocessor(translate_trace_all))
-        self.register_preprocessor(XClingoAnnotationPreprocessor(translate_mute))
+        self.register_preprocessor(XClingoAnnotationPreprocessor())
         self.register_preprocessor(XClingoPreprocessor())

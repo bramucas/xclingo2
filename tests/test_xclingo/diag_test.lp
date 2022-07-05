@@ -27,27 +27,27 @@ c(F,T)   :- c(F,V,T).
 h(F,V,T) :- c(F,V,T).
 
 % Direct effects
-%!trace_rule {"s1 was closed at %",T}
+%!trace_rule {"s1 was closed at %",T}.
 c(s1,closed,T) :- o(toggle(s1),T), h(s1,open,T-1), time(T),T>0.
 
-%!trace_rule {"s1 was open at %",T}
+%!trace_rule {"s1 was open at %",T}.
 c(s1,open,T) :- o(toggle(s1),T), h(s1,closed,T-1), time(T),T>0.
 
 % try using negation not h(s1,open,T-1)
 
 % Indirect effects
-%!trace_rule {"The relay started working at %",T}
+%!trace_rule {"The relay started working at %",T}.
     c(relayline,on,T)   :- c(s1,closed,T), not h(relay,broken,T), time(T).
 
-%!trace_rule {"The relay stopped working at %",T}
+%!trace_rule {"The relay stopped working at %",T}.
     c(relayline,off,T)  :- c(s1,open,T), time(T).
 
-%!trace_rule {"s2 was closed at %",T}
+%!trace_rule {"s2 was closed at %",T}.
 c(s2,closed,T)  :- c(relayline,on,T), time(T).
 
-%!trace_rule {"The light was turned on at %",T}
+%!trace_rule {"The light was turned on at %",T}.
 c(light,on,T)    :- c(s2,closed,T), not h(bulb,broken,T), time(T).
-%!trace_rule {"The light was turned off at %",T}
+%!trace_rule {"The light was turned off at %",T}.
 c(light,off,T)   :- c(s2,open,T), time(T).
 
 % Inertia
@@ -63,12 +63,12 @@ h(F,V,0) :- domain(F,V), not -h(F,V,0).
 -h(F,V,0) :- h(F,W,0), domain(F,V), W!=V.
 
 
-%!show_trace h(light,V,T) : plength(T).
-%!show_trace h(relayline,V,T): plength(T).
+%!show_trace {h(light,V,T)} :-  h(light,V,T), plength(T).
+%!show_trace {h(relayline,V,T)} :-  h(relayline,V,T), plength(T).
 
 
-%!trace {"% was initially %",F,V} h(F,V,0).
-%!trace {"The agent toggled s1 at %", T} o(toggle(s1), T).
+%!trace {h(F,V,0), "% was initially %",F,V} :- h(F,V,0).
+%!trace {o(toggle(s1), T), "The agent toggled s1 at %", T} :- o(toggle(s1), T).
 
 #show o/2.
 #show h/3.

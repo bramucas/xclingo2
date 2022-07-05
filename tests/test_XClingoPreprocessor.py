@@ -462,27 +462,6 @@ class TestXClingoPreprocessor:
                 ast.SymbolicAtom(
                     ast.Function(
                         loc,
-                        "_xclingo_f_atom",
-                        [
-                            ast.SymbolicAtom(
-                                ast.Function(
-                                    loc,
-                                    "alcohol",
-                                    [ast.Variable(loc, "P"), ast.Variable(loc, "A")],
-                                    False,
-                                )
-                            ),
-                        ],
-                        False,
-                    )
-                ),
-            ),
-            ast.Literal(
-                loc,
-                ast.Sign.NoSign,
-                ast.SymbolicAtom(
-                    ast.Function(
-                        loc,
                         "_xclingo_model",
                         [
                             ast.Function(
@@ -624,25 +603,6 @@ class TestXClingoPreprocessor:
             ),
         )
         body = [
-            ast.Literal(
-                loc,
-                ast.Sign.NoSign,
-                ast.SymbolicAtom(
-                    ast.Function(
-                        loc,
-                        "_xclingo_model",
-                        [
-                            ast.Function(
-                                loc,
-                                "sentence",
-                                [ast.Variable(loc, "P"), ast.Variable(loc, "S")],
-                                False,
-                            ),
-                        ],
-                        False,
-                    )
-                ),
-            ),
             ast.Literal(
                 loc,
                 ast.Sign.NoSign,

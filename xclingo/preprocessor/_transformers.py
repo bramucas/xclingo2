@@ -89,6 +89,7 @@ def collect_free_vars(lit_list: Sequence[ast.AST]):
             for arg in lit.atom.symbol.arguments:
                 if arg.ast_type == ast.ASTType.Variable:
                     seen_vars.add(str(arg.name))
+            continue
 
     for var_name in seen_vars:
         yield ast.Variable(loc, var_name)
@@ -437,7 +438,7 @@ def transformer_label_atom(rule_ast: ast.ASTType.Rule):
             )
         ),
     )
-    body = [fatom] + list(_sup_body(rule_ast.body))
+    body = list(_sup_body(rule_ast.body))
     rule = ast.Rule(loc, rule_ast.head, body)
     return rule
 
@@ -456,7 +457,7 @@ def transformer_show_trace(rule_ast: ast.ASTType.Rule):
         ast.Sign.NoSign,
         ast.SymbolicAtom(rule_ast.head.atom.symbol.arguments[0]),
     )
-    rule = ast.Rule(loc, rule_ast.head, list(_sup_body([literal_head] + list(rule_ast.body))))
+    rule = ast.Rule(loc, rule_ast.head, list(_sup_body(rule_ast.body)))
     return rule
 
 
@@ -474,7 +475,7 @@ def transformer_mute(rule_ast: ast.ASTType.Rule):
         ast.Sign.NoSign,
         ast.SymbolicAtom(rule_ast.head.atom.symbol.arguments[0]),
     )
-    return ast.Rule(loc, rule_ast.head, list(_sup_body([literal_head] + list(rule_ast.body))))
+    return ast.Rule(loc, rule_ast.head, list(_sup_body(rule_ast.body)))
 
 
 def transformer_direct_cause(head: ast.ASTType.Literal, cause_candidates: Sequence[AST]):
