@@ -1,8 +1,6 @@
 import re
 from clingo import ast
 
-from ._transformers import _sup_body
-
 loc = ast.Location(
     ast.Position("", 0, 0),
     ast.Position("", 0, 0),
