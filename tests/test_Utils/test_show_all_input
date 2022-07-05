@@ -1,2 +1,0 @@
-%!show_trace sentence(P,A) : P=gabriel.
-%!show_trace sentence(P, 100).
