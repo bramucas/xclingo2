@@ -42,6 +42,13 @@ class TestXclingo:
     """System test. From input to expected output."""
 
     cases = [
+        ("_annotation_operator", xctl_none()),
+        ("_showtrace_1", xctl_none()),
+        ("_showtrace_2", xctl_none()),
+        ("_showtrace_3", xctl_none()),
+        ("_trace_1", xctl_none()),
+        ("_trace_2", xctl_none()),
+        ("_trace_3", xctl_none()),
         ("4graphs", xctl_all()),
         ("constraint1", xctl_constraint()),
         ("count_aggregate", xctl_none()),
