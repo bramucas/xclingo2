@@ -562,8 +562,14 @@ def transformer_direct_cause(head: ast.ASTType.Literal, cause_candidates: Sequen
                         f"_xclingo_direct_cause",
                         [
                             head.atom.symbol.arguments[2],
-                            cond_lit.literal.atom.symbol.arguments[0],
-                            # TODO: should this be a pool with the literals in the condition?
+                            ast.Pool(
+                                loc,
+                                [cond_lit.literal.atom.symbol.arguments[0]]
+                                + [
+                                    dep.atom.symbol.arguments[0]
+                                    for dep in propagates(cond_lit.condition)
+                                ],
+                            ),
                         ],
                         False,
                     )
@@ -644,8 +650,14 @@ def transformer_depends_rule(head: ast.ASTType.Literal, cause_candidates: Sequen
                         f"_xclingo_sup_cause",
                         [
                             head.atom.symbol,
-                            cond_lit.literal.atom.symbol.arguments[0],
-                            # TODO: should this be a pool with the literals in the condition?
+                            ast.Pool(
+                                loc,
+                                [cond_lit.literal.atom.symbol.arguments[0]]
+                                + [
+                                    dep.atom.symbol.arguments[0]
+                                    for dep in propagates(cond_lit.condition)
+                                ],
+                            ),
                         ],
                         False,
                     )
