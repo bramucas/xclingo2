@@ -15,8 +15,6 @@ from ._utils import (
 )
 
 from ._transformers import (
-    transformer_support_rule,
-    transformer_fbody_rule,
     transformer_label_rule,
     transformer_label_atom,
     transformer_show_trace,
@@ -25,6 +23,11 @@ from ._transformers import (
     transformer_direct_cause,
     _xclingo_constraint_head,
     loc,
+)
+
+from ._xclingo_ast import (
+    FRule,
+    SupportRule,
 )
 
 
@@ -189,11 +192,16 @@ class XClingoPreprocessor(Preprocessor):
         return n
 
     def translate_rules(self, rule_id: int, disyunction_id: int, rule_ast: ast.ASTType.Rule):
-        fbody_rule = transformer_fbody_rule(rule_id, disyunction_id, rule_ast)
+        # Fired
+        fbody_rule = FRule(rule_id, disyunction_id, None, rule_ast.head, rule_ast.body).get_rule()
         yield fbody_rule
+
         for dep_rule in transformer_direct_cause(fbody_rule.head, fbody_rule.body):
             yield dep_rule
-        sup_rule = transformer_support_rule(rule_id, disyunction_id, rule_ast)
+        # Support
+        sup_rule = SupportRule(
+            rule_id, disyunction_id, None, rule_ast.head, rule_ast.body
+        ).get_rule()
         yield sup_rule
         for dep_rule in transformer_depends_rule(sup_rule.head, sup_rule.body):
             yield dep_rule
