@@ -253,10 +253,13 @@ class XClingoPreprocessor(Preprocessor):
 
                 else:
                     # Fake relaxed constraint rule
-                    if is_constraint(rule_ast) and self._last_trace_rule is not None:
-                        rule_ast = ast.Rule(
-                            loc, _xclingo_constraint_head(rule_id, rule_ast.body), rule_ast.body
-                        )
+                    if is_constraint(rule_ast):
+                        if self._last_trace_rule is None:
+                            return
+                        else:
+                            rule_ast = ast.Rule(
+                                loc, _xclingo_constraint_head(rule_id, rule_ast.body), rule_ast.body
+                            )
                     for r in self.translate_rules(rule_id, 0, rule_ast):
                         yield r
 

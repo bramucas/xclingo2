@@ -43,6 +43,8 @@ class TestXclingo:
 
     cases = [
         ("_annotation_operator", xctl_none()),
+        ("_cond_lit", xctl_all()),
+        ("_ignore_non_labelled_constraints", xctl_all()),
         ("_showtrace_1", xctl_none()),
         ("_showtrace_2", xctl_none()),
         ("_showtrace_3", xctl_none()),
