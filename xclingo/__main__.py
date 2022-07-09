@@ -103,7 +103,8 @@ def solve_explain(args, xclingo_control: XclingoControl):
     for x_model in xclingo_control.solve():
         nmodel += 1
         print(f"Answer: {nmodel}")
-        print(x_model)
+        if args.print_models:
+            print(x_model)
         nexpl = 0
         for graph_model in x_model.explain_model():
             nexpl += 1
