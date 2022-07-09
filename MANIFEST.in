@@ -1,1 +1,2 @@
 include xclingo/xclingo_lp/*
+include xclingo/extensions/*
