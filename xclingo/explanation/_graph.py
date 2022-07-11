@@ -1,4 +1,3 @@
-from typing import Type, Iterable
 from clingo import Symbol, Model
 from collections import defaultdict
 

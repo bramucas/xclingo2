@@ -1,7 +1,5 @@
 from ast import AST
-from re import S
-from attr import has
-from clingo import Function, ast, Number
+from clingo import ast, Number
 from typing import Sequence
 
 # TODO: fix location

@@ -72,6 +72,11 @@ def check_options():
         - 'all' will explain all constraints and will not minimize them before explaining.""",
     )
     parser.add_argument(
+        "--print-models",
+        action="store_true",
+        help="Prints each original model before its explanations. ",
+    )
+    parser.add_argument(
         "-n",
         nargs=2,
         default=(1, 1),

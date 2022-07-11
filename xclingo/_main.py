@@ -11,8 +11,6 @@ from xclingo.preprocessor import DefaultExplainingPipeline
 
 from xclingo.explainer._logger import XclingoLogger
 
-from ._version import __version__ as xclingo_version
-
 
 class XClingoModel(Model):
     def __init__(self, original_model: Model, explainer: Explainer):
