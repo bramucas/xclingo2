@@ -1,4 +1,5 @@
-from typing import Callable, Iterator, Sequence
+from trace import Trace
+from typing import Callable, Iterator, Sequence, Union
 
 from clingo.ast import (
     AST,
@@ -6,7 +7,6 @@ from clingo.ast import (
     Position,
     ASTType,
     Sign,
-    ASTSequence,
 )
 from clingo.ast import (
     Literal,
@@ -18,6 +18,7 @@ from clingo.ast import (
     ConditionalLiteral,
     SymbolicTerm,
     Pool,
+    Variable,
 )
 from clingo import (
     Number,
@@ -26,6 +27,8 @@ from clingo import (
 from ._transformers import (
     collect_free_vars,
     propagates,
+    aggregates,
+    conditional_literals,
 )
 
 ########### Constants ###########
@@ -37,27 +40,58 @@ loc = Location(
 
 _MODEL_WRAPPER = "_xclingo_model"
 _F_ATOM_WRAPPER = "_xclingo_f_atom"
-_F_WRAPPER = "_xclingo_f"
+
+
+_SHOW_TRACE_HEAD = "_xclingo_show_trace"
+_MUTE_HEAD = "_xclingo_muted"
+_TRACE_HEAD = "_xclingo_label"
 
 _SUP_HEAD = "_xclingo_sup"
 _DEPENDS_HEAD = "_xclingo_sup_cause"
 _FBODY_HEAD = "_xclingo_fbody"
+_F_HEAD = "_xclingo_f"
 _DIRECT_CAUSE_HEAD = "_xclingo_direct_cause"
 
 ########### Element types ###########
+
+
+def xclingo_wrap_symbols(wrapper_name: str, symbols: AST):
+    return SymbolicAtom(Function(loc, wrapper_name, symbols, False))
+
+
+def xclingo_positive_literal(wrapper_name: str, symbol: AST):
+    return Literal(
+        loc,
+        Sign.NoSign,
+        xclingo_wrap_symbols(wrapper_name, [symbol]),
+    )
 
 
 def xclingo_body_literal(wrapper_name: str, literal: AST):
     return Literal(
         loc,
         literal.sign,
-        SymbolicAtom(Function(loc, wrapper_name, [literal.atom.symbol], False)),
+        xclingo_wrap_symbols(wrapper_name, [literal.atom.symbol]),
+    )
+
+
+def xclingo_label_head_literal(labelled: AST, label: AST, vars: Sequence[AST]):
+    external_func = Function(
+        location=loc,
+        name="label",
+        arguments=[label, Function(loc, "", vars, False)],
+        external=True,
+    )
+    return Literal(
+        loc,
+        Sign.NoSign,
+        xclingo_wrap_symbols(_TRACE_HEAD, [labelled, external_func]),
     )
 
 
 def xclingo_rule_head_literal(
-    rule_id: int,
-    disjunction_id: int,
+    rule_id: Union[int, AST],
+    disjunction_id: Union[int, AST],
     function_name: str,
     rule_head: AST,
     rule_body: Sequence[AST],
@@ -70,9 +104,11 @@ def xclingo_rule_head_literal(
                 loc,
                 function_name,
                 [
-                    SymbolicTerm(loc, Number(rule_id)),
-                    SymbolicTerm(loc, Number(disjunction_id)),
-                    rule_head.atom,
+                    SymbolicTerm(loc, Number(rule_id)) if isinstance(rule_id, int) else rule_id,
+                    SymbolicTerm(loc, Number(disjunction_id))
+                    if isinstance(disjunction_id, int)
+                    else disjunction_id,
+                    rule_head.atom if rule_head.ast_type == ASTType.Literal else rule_head,
                     Function(loc, "", list(collect_free_vars(rule_body)), False),  # tuple
                 ],
                 False,
@@ -155,11 +191,42 @@ class XclingoRule:
         return self._rule
 
 
-class SupportRule(XclingoRule):
+class ReferenceLit:
     def __init__(
-        self, rule_id: int, disjunction_id: int, location: Location, head: AST, body: Sequence[AST]
+        self,
+        func_name: str,
+        rule_id: Union[int, AST],
+        disjunction_id: Union[int, AST],
+        head: AST,
+        body: Sequence[AST],
+        **kwargs,
     ):
-        super().__init__(rule_id, disjunction_id, location, head, body)
+        self._reference_lit = xclingo_rule_head_literal(
+            rule_id, disjunction_id, func_name, head, body
+        )
+        super().__init__(
+            rule_id=rule_id, disjunction_id=disjunction_id, head=head, body=body, **kwargs
+        )
+
+
+class SupLit(ReferenceLit):
+    def __init__(self, **kwargs):
+        super().__init__(func_name=_SUP_HEAD, **kwargs)
+
+
+class FbodyLit(ReferenceLit):
+    def __init__(self, **kwargs):
+        super().__init__(func_name=_FBODY_HEAD, **kwargs)
+
+
+class FLit(ReferenceLit):
+    def __init__(self, **kwargs):
+        super().__init__(func_name=_F_HEAD, **kwargs)
+
+
+class ModelBody:
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     def translate_body(self, body: Sequence[AST]):
         for lit in body:
@@ -179,15 +246,10 @@ class SupportRule(XclingoRule):
             else:
                 yield lit
 
-    def translate_head(self, rule_id: int, disjunction_id: int, head: AST, body: Sequence[AST]):
-        return xclingo_rule_head_literal(rule_id, disjunction_id, _SUP_HEAD, head, body)
 
-
-class FRule(XclingoRule):
-    def __init__(
-        self, rule_id: int, disjunction_id: int, location: Location, head: AST, body: Sequence[AST]
-    ):
-        super().__init__(rule_id, disjunction_id, location, head, body)
+class FiredBody:
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     def translate_body(self, body: Sequence[AST]):
         for lit in body:
@@ -209,54 +271,203 @@ class FRule(XclingoRule):
             else:
                 yield lit
 
-    def translate_head(self, rule_id: int, disjunction_id: int, head: AST, body: Sequence[AST]):
-        return xclingo_rule_head_literal(rule_id, disjunction_id, _FBODY_HEAD, head, body)
 
-
-class DependsRule(SupportRule):
-    def __init__(
-        self,
-        rule_id: int,
-        disjunction_id: int,
-        location: Location,
-        head: AST,
-        body: Sequence[AST],
-        cause_candidates: Sequence[AST],
-    ):
-        self.causes = propagates(cause_candidates)
-        self.sup_lit = super().translate_head(head, body)
-        super().__init__(rule_id, disjunction_id, location, head, body)
+class SupportRule(ModelBody, SupLit, XclingoRule):
+    def __init__(self, rule_id: int, disjunction_id: int, head: AST, body: Sequence[AST], **kwargs):
+        super().__init__(
+            rule_id=rule_id, disjunction_id=disjunction_id, head=head, body=body, **kwargs
+        )
 
     def translate_head(self, rule_id: int, disjunction_id: int, head: AST, body: Sequence[AST]):
-        return xclingo_dependency_head_literal(_DEPENDS_HEAD, self.sup_lit, self.causes)
+        return self._reference_lit
+
+
+class FBodyRule(FiredBody, FbodyLit, XclingoRule):
+    def __init__(self, rule_id: int, disjunction_id: int, head: AST, body: Sequence[AST], **kwargs):
+        super().__init__(
+            rule_id=rule_id, disjunction_id=disjunction_id, head=head, body=body, **kwargs
+        )
+
+    def translate_head(self, rule_id: int, disjunction_id: int, head: AST, body: Sequence[AST]):
+        return self._reference_lit
+
+
+class Depends:
+    def __init__(self, extra_body: Sequence[AST], causes: Sequence[AST], **kwargs):
+        self._extra_body = extra_body
+        self._causes = causes
+        super().__init__(**kwargs)
 
     def translate_body(self, body: Sequence[AST]):
-        for lit in super().translate_body(self.causes):
+        for lit in super().translate_body(self._extra_body):
             yield lit
-        yield self.sup_lit
+        yield self._reference_lit
 
 
-# class DirectCauseRule(FRule):
-#     def __init__(
-#         self,
-#         rule_id: int,
-#         disjunction_id: int,
-#         location: Location,
-#         head: AST,
-#         body: Sequence[AST],
-#         cause_candidates: Sequence[AST],
-#     ):
-#         self.causes = propagates(cause_candidates)
-#         self.__head = head
-#         self.rule_id = rule_id
-#         self.disjunction_id = disjunction_id
+class DependsRule(Depends, ModelBody, SupLit, XclingoRule):
+    def __init__(
+        self,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
 
-#     def translate_head(self, head: AST, body: Sequence[AST]):
-#         return XclingoDependencyHeadLiteral(_DEPENDS_HEAD, head, self.causes)
+    def translate_head(self, rule_id: int, disjunction_id: int, head: AST, body: Sequence[AST]):
+        return xclingo_dependency_head_literal(
+            None, _DEPENDS_HEAD, self._reference_lit, self._causes
+        )
 
-#     def translate_body(self, body: Sequence[AST]):
-#         for lit in super().translate_body(self.causes):
-#             yield lit
-#         yield xclingo_rule_head_literal(
-#             self.rule_id, self.disjunction_id, _F_WRAPPER, self.__head, body
-#         )
+
+class DirectCauseRule(Depends, FiredBody, FLit, XclingoRule):
+    def __init__(
+        self,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+
+    def translate_head(self, rule_id: int, disjunction_id: int, head: AST, body: Sequence[AST]):
+        return xclingo_dependency_head_literal(None, _DIRECT_CAUSE_HEAD, head, self._causes)
+
+
+class TraceAnnotation:
+    def __init__(self, labelled: AST, label: AST, vars: Sequence[AST], **kwargs):
+        self.labelled = labelled
+        self.label = label
+        self.vars = vars
+        super().__init__(**kwargs)
+
+    def translate_head(self, rule_id: int, disjunction_id: int, head: AST, body: Sequence[AST]):
+        return xclingo_label_head_literal(self.labelled, self.label, self.vars)
+
+
+class TraceAnnotationRule(TraceAnnotation, ModelBody, XclingoRule):
+    def __init__(self, location: Location, head: AST, body: Sequence[AST]):
+        super().__init__(
+            labelled=head.elements[0].terms[0],
+            label=head.elements[0].terms[1],
+            vars=head.elements[0].terms[2:],
+            rule_id=None,
+            disjunction_id=None,
+            location=location,
+            head=head,
+            body=body,
+        )
+
+
+class TraceRuleAnnotationRule(TraceAnnotation, FiredBody, FLit, XclingoRule):
+    def __init__(self, rule_id: int, head: AST, body: Sequence[AST], trace_head: AST):
+        super().__init__(
+            labelled=Variable(loc, "Head"),
+            label=trace_head.elements[0].terms[0],
+            vars=trace_head.elements[0].terms[1:],
+            rule_id=rule_id,
+            disjunction_id=Variable(loc, "DisID"),
+            location=None,
+            head=Variable(loc, "Head"),
+            body=body,
+        )
+
+    def translate_body(self, body: Sequence[AST]):
+        yield self._reference_lit
+
+
+class MarkAnnotation(ModelBody, XclingoRule):
+    def __init__(self, wrapper: str, location: Location, head: AST, body: Sequence[AST]):
+        self._wrapper = wrapper
+        super().__init__(rule_id=None, disjunction_id=None, location=location, head=head, body=body)
+
+    def translate_head(self, rule_id: int, disjunction_id: int, head: AST, body: Sequence[AST]):
+        return xclingo_positive_literal(self._wrapper, head.elements[0].terms[0])
+
+
+class ShowTraceAnnotationRule(MarkAnnotation):
+    def __init__(self, location: Location, head: AST, body: Sequence[AST]):
+        super().__init__(wrapper=_SHOW_TRACE_HEAD, location=location, head=head, body=body)
+
+
+class MuteAnnotationRule(MarkAnnotation):
+    def __init__(self, location: Location, head: AST, body: Sequence[AST]):
+        super().__init__(wrapper=_MUTE_HEAD, location=location, head=head, body=body)
+
+
+######### Translators ##########
+
+
+class AnnotationTranslator:
+    def __init__(self):
+        pass
+
+    def translate(self, annotation_name: str, rule_ast: AST):
+        if annotation_name == "show_trace":
+            yield ShowTraceAnnotationRule(None, rule_ast.head, rule_ast.body).get_rule()
+        elif annotation_name == "trace":
+            yield TraceAnnotationRule(None, rule_ast.head, rule_ast.body).get_rule()
+        elif annotation_name == "mute":
+            yield MuteAnnotationRule(None, rule_ast.head, rule_ast.body).get_rule()
+
+
+class RuleTranslator:
+    def __init__(self, rule, depends, trace_rule) -> None:
+        self._rule = rule
+        self._depends = depends
+        self._trace_rule = trace_rule
+
+    def translate(
+        self, rule_id, disjunction_id, rule_ast: AST, trace_rule_ast: AST
+    ) -> Sequence[AST]:
+        yield self._rule(
+            rule_id=rule_id,
+            disjunction_id=disjunction_id,
+            location=None,
+            head=rule_ast.head,
+            body=rule_ast.body,
+        ).get_rule()
+        if rule_ast.body:
+            causes = list(propagates(rule_ast.body))
+            if causes:
+                yield self._depends(
+                    rule_id=rule_id,
+                    disjunction_id=disjunction_id,
+                    location=None,
+                    head=rule_ast.head,
+                    body=rule_ast.body,
+                    extra_body=[],
+                    causes=causes,
+                ).get_rule()
+        for agg_element in aggregates(rule_ast.body):
+            causes = list(propagates(agg_element.condition))
+            if causes:
+                yield self._depends(
+                    rule_id=rule_id,
+                    disjunction_id=disjunction_id,
+                    location=None,
+                    head=rule_ast.head,
+                    body=rule_ast.body,
+                    extra_body=agg_element.condition,
+                    causes=causes,
+                ).get_rule()
+        for cond_lit in conditional_literals(rule_ast.body):
+            causes = list(propagates(cond_lit.condition))
+            if causes:
+                yield self._depends(
+                    rule_id=rule_id,
+                    disjunction_id=disjunction_id,
+                    location=None,
+                    head=rule_ast.head,
+                    body=rule_ast.body,
+                    extra_body=cond_lit.condition,
+                    causes=causes,
+                ).get_rule()
+        if self._trace_rule is not None and trace_rule_ast is not None:
+            yield self._trace_rule(
+                rule_id, rule_ast.head, rule_ast.body, trace_rule_ast.head
+            ).get_rule()
+
+
+class SupportTranslator(RuleTranslator):
+    def __init__(self) -> None:
+        super().__init__(SupportRule, DependsRule, None)
+
+
+class FTranslator(RuleTranslator):
+    def __init__(self) -> None:
+        super().__init__(FBodyRule, DirectCauseRule, TraceRuleAnnotationRule)

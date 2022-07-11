@@ -1,33 +1,21 @@
 from typing import Sequence
 from clingo import ast
 from ._utils import (
-    is_xclingo_label,
-    is_xclingo_show_trace,
     is_choice_rule,
-    is_label_rule,
-    is_xclingo_mute,
     is_constraint,
     is_disyunctive_head,
-    translate_trace,
-    translate_trace_all,
-    translate_show_all,
-    translate_mute,
+    xclingo_annotation,
 )
 
 from ._transformers import (
-    transformer_label_rule,
-    transformer_label_atom,
-    transformer_show_trace,
-    transformer_mute,
-    transformer_depends_rule,
-    transformer_direct_cause,
     _xclingo_constraint_head,
     loc,
 )
 
 from ._xclingo_ast import (
-    FRule,
-    SupportRule,
+    SupportTranslator,
+    FTranslator,
+    AnnotationTranslator,
 )
 
 
@@ -81,19 +69,6 @@ class XClingoAnnotationPreprocessor(Preprocessor):
         super().reset()
 
     def preprocess_rule(self, rule_ast: ast.AST) -> None:
-        if (
-            rule_ast.ast_type == ast.ASTType.Rule
-            and rule_ast.head.ast_type == ast.ASTType.TheoryAtom
-        ):
-            name = rule_ast.head.term.name
-            if name == "trace_rule":
-                rule_ast = translate_trace(rule_ast)
-            elif name == "trace":
-                rule_ast = translate_trace_all(rule_ast)
-            elif name == "show_trace":
-                rule_ast = translate_show_all(rule_ast)
-            elif name == "mute":
-                rule_ast = translate_mute(rule_ast)
         yield rule_ast
 
     def process_program(self, program: str):
@@ -142,11 +117,12 @@ class ConstraintRelaxer(Preprocessor):
             rule_ast (ast.AST): rule to be preprocessed and added to the translation.
         """
         # if there is a label, self.there_is_a_label is set to True but it's not used
-        if is_xclingo_label(rule_ast):
+        annotation_name = xclingo_annotation(rule_ast)
+        if annotation_name == "trace_rule":
             self.there_is_a_label = True
             if self.preserve_labels:
                 yield rule_ast
-        else:
+        elif annotation_name == None:
             if rule_ast.ast_type == ast.ASTType.Rule:
                 rule_id = self._increment_constraint_count()
             #  if there is a constraint and self.there_is_a_label is True, we put a head and add it to the translation
@@ -154,6 +130,8 @@ class ConstraintRelaxer(Preprocessor):
                 rule_ast = self._relaxed_constraint(rule_id, rule_ast)
             self.there_is_a_label = False
             yield rule_ast
+        else:
+            return
 
 
 class XClingoPreprocessor(Preprocessor):
@@ -179,6 +157,9 @@ class XClingoPreprocessor(Preprocessor):
         super().__init__()
         self._rule_count = 1
         self._last_trace_rule = None
+        self._annotation_translator = AnnotationTranslator()
+        self._fired_translator = FTranslator()
+        self._support_translator = SupportTranslator()
 
     def reset(self):
         super().reset()
@@ -191,20 +172,18 @@ class XClingoPreprocessor(Preprocessor):
         self._rule_count += 1
         return n
 
-    def translate_rules(self, rule_id: int, disyunction_id: int, rule_ast: ast.ASTType.Rule):
-        # Fired
-        fbody_rule = FRule(rule_id, disyunction_id, None, rule_ast.head, rule_ast.body).get_rule()
-        yield fbody_rule
+    def translate_annotation(self, annotation_name: str, rule_ast: ast.AST):
+        for translated_annotation in self._annotation_translator.translate(
+            annotation_name, rule_ast
+        ):
+            yield translated_annotation
 
-        for dep_rule in transformer_direct_cause(fbody_rule.head, fbody_rule.body):
-            yield dep_rule
-        # Support
-        sup_rule = SupportRule(
-            rule_id, disyunction_id, None, rule_ast.head, rule_ast.body
-        ).get_rule()
-        yield sup_rule
-        for dep_rule in transformer_depends_rule(sup_rule.head, sup_rule.body):
-            yield dep_rule
+    def translate_rules(self, rule_id: int, disjunction_id: int, rule_ast: ast.AST):
+        for translator in (self._support_translator, self._fired_translator):
+            for translated_rule in translator.translate(
+                rule_id, disjunction_id, rule_ast, self._last_trace_rule
+            ):
+                yield translated_rule
 
     def preprocess_rule(self, rule_ast: ast.ASTType.Rule):
         """Translates a given rule into its xclingo translation and adds it to the translation.
@@ -224,20 +203,16 @@ class XClingoPreprocessor(Preprocessor):
         if rule_ast.ast_type != ast.ASTType.Rule:
             yield rule_ast  # Things that are not rules are just passed
         else:
-
-            if is_xclingo_label(rule_ast):
-                if is_label_rule(rule_ast):
+            # Checks if it is an xclingo annotation
+            annotation_name = xclingo_annotation(rule_ast)
+            if annotation_name is not None:
+                if annotation_name == "trace_rule":
                     self._last_trace_rule = rule_ast
-                    return
-                else:  # if it is label atom
-                    yield transformer_label_atom(rule_ast)
-
-            elif is_xclingo_show_trace(rule_ast):
-                yield transformer_show_trace(rule_ast)
-
-            elif is_xclingo_mute(rule_ast):
-                yield transformer_mute(rule_ast)
-
+                else:
+                    for translated_annotation in self.translate_annotation(
+                        annotation_name, rule_ast
+                    ):
+                        yield translated_annotation
             else:
                 rule_id = self._increment_rule_count()
 
@@ -271,6 +246,4 @@ class XClingoPreprocessor(Preprocessor):
                     for r in self.translate_rules(rule_id, 0, rule_ast):
                         yield r
 
-                if self._last_trace_rule is not None:
-                    yield transformer_label_rule(rule_id, self._last_trace_rule, rule_ast.body)
-                    self._last_trace_rule = None
+                self._last_trace_rule = None

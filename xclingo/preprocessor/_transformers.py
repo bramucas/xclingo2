@@ -21,11 +21,9 @@ def propagates(lit_list: Sequence[ast.AST]):
         ast.AST: literals that propagate cause.
     """
     for lit in lit_list:
-        if (
-            lit.ast_type != ast.ASTType.ConditionalLiteral
-            and lit.sign == ast.Sign.NoSign
-            and lit.atom.ast_type == ast.ASTType.SymbolicAtom
-        ):
+        if lit.ast_type == ast.ASTType.ConditionalLiteral:
+            lit = lit.literal
+        if lit.sign == ast.Sign.NoSign and lit.atom.ast_type == ast.ASTType.SymbolicAtom:
             yield lit
 
 
@@ -66,13 +64,17 @@ def conditional_literals(lit_list: Sequence[ast.AST]):
 
 def collect_free_vars(lit_list: Sequence[ast.AST]):
     seen_vars = set()
+    unsafe_vars = set()
     for lit in lit_list:
         # handle conditional literals
         if lit.ast_type == ast.ASTType.ConditionalLiteral:
+            for arg in lit.literal.atom.symbol.arguments:
+                if arg.ast_type == ast.ASTType.Variable:
+                    unsafe_vars.add(str(arg.name))
             continue
 
         # handle comparisons
-        elif lit.atom.ast_type == ast.ASTType.Comparison:
+        if lit.atom.ast_type == ast.ASTType.Comparison:
             if lit.atom.left.ast_type == ast.ASTType.Variable:
                 seen_vars.add(str(lit.atom.left.name))
             if lit.atom.right.ast_type == ast.ASTType.Variable:
@@ -90,7 +92,8 @@ def collect_free_vars(lit_list: Sequence[ast.AST]):
             continue
 
     for var_name in seen_vars:
-        yield ast.Variable(loc, var_name)
+        if var_name not in unsafe_vars:
+            yield ast.Variable(loc, var_name)
 
 
 def _sup_body(lit_list: Sequence[ast.AST]):
