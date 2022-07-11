@@ -3,13 +3,6 @@ from ._preprocessor import XClingoAnnotationPreprocessor
 from ._preprocessor import ConstraintRelaxer
 from ._preprocessor import XClingoPreprocessor
 
-from ._utils import (
-    translate_show_all,
-    translate_trace,
-    translate_trace_all,
-    translate_mute,
-)
-
 
 class PreprocessorPipeline:
     def __init__(self):

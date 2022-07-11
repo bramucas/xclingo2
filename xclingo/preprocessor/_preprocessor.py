@@ -1,4 +1,4 @@
-from typing import Callable, Sequence
+from typing import Sequence
 from clingo import ast
 from ._utils import (
     is_xclingo_label,

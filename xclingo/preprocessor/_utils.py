@@ -1,4 +1,3 @@
-import re
 from clingo import ast
 
 loc = ast.Location(

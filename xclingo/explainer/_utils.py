@@ -1,4 +1,4 @@
-from clingo import Function, String
+from clingo import String
 from clingo.symbol import SymbolType
 
 
