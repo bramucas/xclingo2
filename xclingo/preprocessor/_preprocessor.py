@@ -8,15 +8,13 @@ from ._utils import (
 )
 
 from ._transformers import (
-    _xclingo_constraint_head,
     loc,
-)
-
-from ._xclingo_ast import (
     SupportTranslator,
     FTranslator,
     AnnotationTranslator,
 )
+
+from ._xclingo_ast import _xclingo_constraint_head
 
 
 class Preprocessor:

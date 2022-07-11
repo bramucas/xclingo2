@@ -1,3 +1,7 @@
+from typing import Sequence
+
+from clingo.ast import AST, ASTType, Sign, Variable
+
 from clingo import ast
 
 loc = ast.Location(
@@ -6,106 +10,92 @@ loc = ast.Location(
 )
 
 
-def translate_trace(theory_trace_rule: ast.AST):
-    theory_terms = theory_trace_rule.head.elements[0].terms
-    return ast.Rule(
-        location=loc,
-        head=ast.Literal(
-            location=loc,
-            sign=ast.Sign.NoSign,
-            atom=ast.SymbolicAtom(
-                ast.Function(
-                    location=loc,
-                    name="_xclingo_label",
-                    arguments=[
-                        ast.Function(loc, "id", [], False),
-                        ast.Function(
-                            location=loc,
-                            name="label",
-                            arguments=[
-                                theory_terms[0],
-                                ast.Function(loc, "", theory_terms[1:], False),
-                            ],
-                            external=True,
-                        ),
-                    ],
-                    external=False,
-                )
-            ),
-        ),
-        body=[],
-    )
+def propagates(lit_list: Sequence[AST]):
+    """Captures the part of a body that propagate causes.
+    This is, the positive part of the body of a rule. Comparison literals are ignored.
+
+    Args:
+        lit_list (Sequence[AST]): list of literals to be processed. Normally
+        a rule's body.
+
+    Yields:
+        AST: literals that propagate cause.
+    """
+    for lit in lit_list:
+        if (
+            lit.ast_type != ASTType.ConditionalLiteral
+            and lit.sign == Sign.NoSign
+            and lit.atom.ast_type == ASTType.SymbolicAtom
+        ):
+            yield lit
 
 
-def translate_trace_all(theory_trace_rule: ast.AST):
-    theory_terms = theory_trace_rule.head.elements[0].terms
-    return ast.Rule(
-        location=loc,
-        head=ast.Literal(
-            location=loc,
-            sign=ast.Sign.NoSign,
-            atom=ast.SymbolicAtom(
-                ast.Function(
-                    location=loc,
-                    name="_xclingo_label",
-                    arguments=[
-                        theory_terms[0],
-                        ast.Function(
-                            location=loc,
-                            name="label",
-                            arguments=[
-                                theory_terms[1],
-                                ast.Function(loc, "", theory_terms[2:], False),
-                            ],
-                            external=True,
-                        ),
-                    ],
-                    external=False,
-                )
-            ),
-        ),
-        body=theory_trace_rule.body,
-    )
+def aggregates(lit_list: Sequence[AST]):
+    """Captures the part of a body that is an aggregate.
+
+    Args:
+        lit_list (Sequence[AST]): list of literals to be processed. Normally
+        a rule's body.
+
+    Yields:
+        AST: literals that are aggregates.
+    """
+    for lit in lit_list:
+        if (
+            lit.ast_type != ASTType.ConditionalLiteral
+            and lit.sign == Sign.NoSign
+            and lit.atom.ast_type == ASTType.BodyAggregate
+        ):
+            for e in lit.atom.elements:
+                yield e
 
 
-def translate_show_all(theory_trace_rule: ast.AST):
-    theory_terms = theory_trace_rule.head.elements[0].terms
-    return ast.Rule(
-        location=loc,
-        head=ast.Literal(
-            location=loc,
-            sign=ast.Sign.NoSign,
-            atom=ast.SymbolicAtom(
-                ast.Function(
-                    location=loc,
-                    name="_xclingo_show_trace",
-                    arguments=[theory_terms[0]],
-                    external=False,
-                )
-            ),
-        ),
-        body=theory_trace_rule.body,
-    )
+def conditional_literals(lit_list: Sequence[AST]):
+    """Captures the part of a body that is a conditional literal.
+
+    Args:
+        lit_list (Sequence[AST]): list of literals to be processed. Normally
+        a rule's body.
+
+    Yields:
+        AST: literals that are conditional literals.
+    """
+    for lit in lit_list:
+        if lit.ast_type == ASTType.ConditionalLiteral:
+            yield lit
 
 
-def translate_mute(theory_trace_rule: ast.AST):
-    theory_terms = theory_trace_rule.head.elements[0].terms
-    return ast.Rule(
-        location=loc,
-        head=ast.Literal(
-            location=loc,
-            sign=ast.Sign.NoSign,
-            atom=ast.SymbolicAtom(
-                ast.Function(
-                    location=loc,
-                    name="_xclingo_muted",
-                    arguments=[theory_terms[0]],
-                    external=False,
-                )
-            ),
-        ),
-        body=theory_trace_rule.body,
-    )
+def collect_free_vars(lit_list: Sequence[AST]):
+    seen_vars, unsafe_vars = set(), set()
+    for lit in lit_list:
+        # handle conditional literals
+        if lit.ast_type == ASTType.ConditionalLiteral:
+            for arg in lit.literal.atom.symbol.arguments:
+                if arg.ast_type == ASTType.Variable:
+                    unsafe_vars.add(str(arg.name))
+            continue
+
+        # handle comparisons
+        if lit.atom.ast_type == ASTType.Comparison:
+            if lit.atom.left.ast_type == ASTType.Variable:
+                seen_vars.add(str(lit.atom.left.name))
+            if lit.atom.right.ast_type == ASTType.Variable:
+                seen_vars.add(str(lit.atom.right.name))
+
+        # Skip negative literals
+        elif lit.sign != Sign.NoSign:
+            continue
+
+        # handle positive body literals
+        elif lit.atom.ast_type == ASTType.SymbolicAtom:
+            for arg in lit.atom.symbol.arguments:
+                if arg.ast_type == ASTType.Variable:
+                    seen_vars.add(str(arg.name))
+            continue
+
+    for var_name in seen_vars:
+        if var_name not in unsafe_vars:
+            yield Variable(loc, var_name)
 
 
 def is_constraint(rule_ast):
