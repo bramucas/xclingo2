@@ -1,33 +1,21 @@
 from typing import Sequence
-from clingo import ast
-from ._utils import (
-    is_xclingo_label,
-    is_xclingo_show_trace,
+from clingo.ast import (
+    AST,
+    ASTType,
+)
+from clingo.ast import parse_string
+from .xclingo_ast import (
     is_choice_rule,
-    is_label_rule,
-    is_xclingo_mute,
     is_constraint,
     is_disyunctive_head,
-    translate_trace,
-    translate_trace_all,
-    translate_show_all,
-    translate_mute,
+    xclingo_annotation,
 )
 
-from ._transformers import (
-    transformer_label_rule,
-    transformer_label_atom,
-    transformer_show_trace,
-    transformer_mute,
-    transformer_depends_rule,
-    transformer_direct_cause,
-    _xclingo_constraint_head,
-    loc,
-)
-
-from ._xclingo_ast import (
-    FRule,
-    SupportRule,
+from ._translator import (
+    SupportTranslator,
+    FTranslator,
+    AnnotationTranslator,
+    RelaxedConstraintTranslator,
 )
 
 
@@ -38,14 +26,14 @@ class Preprocessor:
     def reset(self) -> None:
         self._translation = ""
 
-    def preprocess_rule(self, rule_ast: ast.AST) -> Sequence[ast.AST]:
+    def preprocess_rule(self, rule_ast: AST) -> Sequence[AST]:
         raise RuntimeError("This method is intended to be override")
 
-    def _add_to_translation(self, rule_asts: Sequence[ast.AST]):
+    def _add_to_translation(self, rule_asts: Sequence[AST]):
         """Adds the given rule to the internal translation.
 
         Args:
-            rule_ast (ast.AST): the rule to add to the translation.
+            rule_ast (AST): the rule to add to the translation.
         """
         for ra in rule_asts:
             self._translation += f"{ra}\n"
@@ -66,7 +54,7 @@ class Preprocessor:
             name (str, optional): Defaults to "".
         """
         self._translation = ""
-        ast.parse_string(
+        parse_string(
             program,
             lambda ast: self._add_to_translation(self.preprocess_rule(ast)),
         )
@@ -80,20 +68,7 @@ class XClingoAnnotationPreprocessor(Preprocessor):
     def reset(self) -> None:
         super().reset()
 
-    def preprocess_rule(self, rule_ast: ast.AST) -> None:
-        if (
-            rule_ast.ast_type == ast.ASTType.Rule
-            and rule_ast.head.ast_type == ast.ASTType.TheoryAtom
-        ):
-            name = rule_ast.head.term.name
-            if name == "trace_rule":
-                rule_ast = translate_trace(rule_ast)
-            elif name == "trace":
-                rule_ast = translate_trace_all(rule_ast)
-            elif name == "show_trace":
-                rule_ast = translate_show_all(rule_ast)
-            elif name == "mute":
-                rule_ast = translate_mute(rule_ast)
+    def preprocess_rule(self, rule_ast: AST) -> None:
         yield rule_ast
 
     def process_program(self, program: str):
@@ -108,17 +83,16 @@ class ConstraintRelaxer(Preprocessor):
     independent from the number of rules in the program.
     """
 
-    def __init__(self, preserve_labels=False):
+    def __init__(self, keep_annotations: bool = False):
         super().__init__()
         self._constraint_count = 1
-        self._lits = []
         self.there_is_a_label = False
-        self.preserve_labels = preserve_labels
+        self._keep_annotations = keep_annotations
+        self._relaxed_constraint_translator = RelaxedConstraintTranslator()
 
     def reset(self):
         super().reset()
         self._constraint_count = 1
-        self._lits = []
         self.there_is_a_label = False
 
     def _increment_constraint_count(self):
@@ -127,33 +101,41 @@ class ConstraintRelaxer(Preprocessor):
         self._constraint_count += 1
         return n
 
-    def _relaxed_constraint(self, rule_id: int, rule_ast: ast.AST):
-        return ast.Rule(
-            location=loc, head=_xclingo_constraint_head(rule_id, rule_ast.body), body=rule_ast.body
-        )
-
-    def preprocess_rule(self, rule_ast: ast.AST):
+    def preprocess_rule(self, rule_ast: AST):
         """Preprocess the given rule and adds the result to the translation.
 
         Labelled constraints are transformed into their relaxed form. The rest of the program is
         unchanged.
 
         Args:
-            rule_ast (ast.AST): rule to be preprocessed and added to the translation.
+            rule_ast (AST): rule to be preprocessed and added to the translation.
         """
-        # if there is a label, self.there_is_a_label is set to True but it's not used
-        if is_xclingo_label(rule_ast):
-            self.there_is_a_label = True
-            if self.preserve_labels:
-                yield rule_ast
+        self._add_comment_to_translation(rule_ast)
+        # Ignore #shows
+        if rule_ast.ast_type == ASTType.ShowSignature:
+            return
+
+        if rule_ast.ast_type != ASTType.Rule:
+            yield rule_ast  # Things that are not rules are just passed
         else:
-            if rule_ast.ast_type == ast.ASTType.Rule:
+            annotation_name = xclingo_annotation(rule_ast)
+
+            if annotation_name is None:  # Rules
                 rule_id = self._increment_constraint_count()
-            #  if there is a constraint and self.there_is_a_label is True, we put a head and add it to the translation
-            if is_constraint(rule_ast) and self.there_is_a_label is True:
-                rule_ast = self._relaxed_constraint(rule_id, rule_ast)
-            self.there_is_a_label = False
-            yield rule_ast
+                if is_constraint(rule_ast) and self.there_is_a_label is True:
+                    for translated_constraint in self._relaxed_constraint_translator.translate(
+                        rule_id, rule_ast
+                    ):
+                        yield translated_constraint
+                else:
+                    yield rule_ast
+                self.there_is_a_label = False
+
+            else:  # Annotations
+                if annotation_name == "trace_rule":
+                    self.there_is_a_label = True
+                if self._keep_annotations:
+                    yield rule_ast
 
 
 class XClingoPreprocessor(Preprocessor):
@@ -179,6 +161,9 @@ class XClingoPreprocessor(Preprocessor):
         super().__init__()
         self._rule_count = 1
         self._last_trace_rule = None
+        self._annotation_translator = AnnotationTranslator()
+        self._fired_translator = FTranslator()
+        self._support_translator = SupportTranslator()
 
     def reset(self):
         super().reset()
@@ -191,86 +176,80 @@ class XClingoPreprocessor(Preprocessor):
         self._rule_count += 1
         return n
 
-    def translate_rules(self, rule_id: int, disyunction_id: int, rule_ast: ast.ASTType.Rule):
-        # Fired
-        fbody_rule = FRule(rule_id, disyunction_id, None, rule_ast.head, rule_ast.body).get_rule()
-        yield fbody_rule
+    def translate_annotation(self, annotation_name: str, rule_ast: AST):
+        for translated_annotation in self._annotation_translator.translate(
+            annotation_name, rule_ast
+        ):
+            yield translated_annotation
 
-        for dep_rule in transformer_direct_cause(fbody_rule.head, fbody_rule.body):
-            yield dep_rule
-        # Support
-        sup_rule = SupportRule(
-            rule_id, disyunction_id, None, rule_ast.head, rule_ast.body
-        ).get_rule()
-        yield sup_rule
-        for dep_rule in transformer_depends_rule(sup_rule.head, sup_rule.body):
-            yield dep_rule
+    def translate_rule(
+        self,
+        rule_id: int,
+        disjunction_id: int,
+        original_head: AST,
+        original_body: Sequence[AST],
+    ):
+        for translator in (self._support_translator, self._fired_translator):
+            for translated_rule in translator.translate(
+                rule_id, disjunction_id, original_head, original_body, self._last_trace_rule
+            ):
+                yield translated_rule
 
-    def preprocess_rule(self, rule_ast: ast.ASTType.Rule):
+    def preprocess_rule(self, rule_ast: ASTType.Rule):
         """Translates a given rule into its xclingo translation and adds it to the translation.
         Before every addition, a comment containing the original rule is also added.
 
         Not traced constraints will be ignored.
 
         Args:
-            rule_ast (ast.ASTType.Rule): rule to be translated.
+            rule_ast (ASTType.Rule): rule to be translated.
         """
         # Ignore #shows
-        if rule_ast.ast_type == ast.ASTType.ShowSignature:
+        if rule_ast.ast_type == ASTType.ShowSignature:
             return
         # TODO: what to do with externals?
         # TODO: which other things
         self._add_comment_to_translation(rule_ast)
-        if rule_ast.ast_type != ast.ASTType.Rule:
+        if rule_ast.ast_type != ASTType.Rule:
             yield rule_ast  # Things that are not rules are just passed
         else:
-
-            if is_xclingo_label(rule_ast):
-                if is_label_rule(rule_ast):
+            # Checks if it is an xclingo annotation
+            annotation_name = xclingo_annotation(rule_ast)
+            if annotation_name is not None:
+                if annotation_name == "trace_rule":
                     self._last_trace_rule = rule_ast
-                    return
-                else:  # if it is label atom
-                    yield transformer_label_atom(rule_ast)
-
-            elif is_xclingo_show_trace(rule_ast):
-                yield transformer_show_trace(rule_ast)
-
-            elif is_xclingo_mute(rule_ast):
-                yield transformer_mute(rule_ast)
-
+                else:
+                    for translated_annotation in self.translate_annotation(
+                        annotation_name, rule_ast
+                    ):
+                        yield translated_annotation
             else:
                 rule_id = self._increment_rule_count()
 
                 if is_choice_rule(rule_ast):
                     for cond_lit in rule_ast.head.elements:
-                        rule_ast = ast.Rule(
-                            loc, cond_lit.literal, list(cond_lit.condition) + list(rule_ast.body)
-                        )
-                        for r in self.translate_rules(rule_id, 0, rule_ast):
+
+                        for r in self.translate_rule(
+                            rule_id,
+                            0,
+                            cond_lit.literal,
+                            list(cond_lit.condition) + list(rule_ast.body),
+                        ):
                             yield r
 
                 elif is_disyunctive_head(rule_ast):
                     disjunction_id = 0
                     for cond_lit in rule_ast.head.elements:
-                        rule_ast = ast.Rule(
-                            loc, cond_lit.literal, list(cond_lit.condition) + list(rule_ast.body)
-                        )
-                        for r in self.translate_rules(rule_id, disjunction_id, rule_ast):
+                        for r in self.translate_rule(
+                            rule_id,
+                            disjunction_id,
+                            cond_lit.literal,
+                            list(cond_lit.condition) + list(rule_ast.body),
+                        ):
                             yield r
                         disjunction_id += 1
-
-                else:
-                    # Fake relaxed constraint rule
-                    if is_constraint(rule_ast):
-                        if self._last_trace_rule is None:
-                            return
-                        else:
-                            rule_ast = ast.Rule(
-                                loc, _xclingo_constraint_head(rule_id, rule_ast.body), rule_ast.body
-                            )
-                    for r in self.translate_rules(rule_id, 0, rule_ast):
+                elif not is_constraint(rule_ast):
+                    for r in self.translate_rule(rule_id, 0, rule_ast.head, rule_ast.body):
                         yield r
 
-                if self._last_trace_rule is not None:
-                    yield transformer_label_rule(rule_id, self._last_trace_rule, rule_ast.body)
-                    self._last_trace_rule = None
+                self._last_trace_rule = None

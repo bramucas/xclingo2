@@ -6,6 +6,7 @@ from typing import Tuple
 from xclingo import XclingoControl
 from xclingo.preprocessor import (
     ConstraintRelaxerPipeline,
+    ConstraintExplainingPipeline,
 )
 from xclingo.extensions import load_xclingo_extension
 
@@ -32,6 +33,7 @@ def xctl_constraint():
         ["0"],
         n_explanations="0",
         solving_preprocessor_pipeline=ConstraintRelaxerPipeline(),
+        explaining_preprocessor_pipeline=ConstraintExplainingPipeline(),
     )
     xctl.extend_explainer("base", [], load_xclingo_extension("violated_constraints_minimize.lp"))
     xctl.extend_explainer("base", [], load_xclingo_extension("violated_constraints_show_trace.lp"))
@@ -42,27 +44,27 @@ class TestXclingo:
     """System test. From input to expected output."""
 
     cases = [
-        ("_annotation_operator", xctl_none()),
+        ("_annotation_operator", xctl_none()),  # 0
         ("_cond_lit", xctl_all()),
         ("_ignore_non_labelled_constraints", xctl_all()),
         ("_showtrace_1", xctl_none()),
         ("_showtrace_2", xctl_none()),
-        ("_showtrace_3", xctl_none()),
+        ("_showtrace_3", xctl_none()),  # 5
         ("_trace_1", xctl_none()),
         ("_trace_2", xctl_none()),
         ("_trace_3", xctl_none()),
         ("4graphs", xctl_all()),
-        ("constraint1", xctl_constraint()),
+        ("constraint1", xctl_constraint()),  # 10
         ("count_aggregate", xctl_none()),
         ("diag", xctl_none()),
         ("diamond_with_mute", xctl_none()),
         ("disyunction", xctl_none()),
-        ("dont_drive_drunk", xctl_none()),
+        ("dont_drive_drunk", xctl_none()),  # 15
         ("happy", xctl_none()),
         ("ignore_shows", xctl_all()),
         ("pool_and_choice", xctl_none()),
         ("pool_and_choice2", xctl_none()),
-        ("unbalanced_table", xctl_all()),
+        ("unbalanced_table", xctl_all()),  # 20
     ]
 
     @pytest.mark.parametrize("params", cases)

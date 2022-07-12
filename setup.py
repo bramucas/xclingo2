@@ -32,6 +32,14 @@ setuptools.setup(
         "argparse",
         "importlib_resources",
     ],
-    packages=["xclingo", "xclingo.preprocessor", "xclingo.explanation", "xclingo.xclingo_lp", "xclingo.explainer", "xclingo.extensions"],
+    packages=[
+        "xclingo",
+        "xclingo.preprocessor",
+        "xclingo.xclingo_ast",
+        "xclingo.explanation",
+        "xclingo.xclingo_lp",
+        "xclingo.explainer",
+        "xclingo.extensions",
+    ],
     entry_points={"console_scripts": ["xclingo=xclingo.__main__:main"]},
 )
