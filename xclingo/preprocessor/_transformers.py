@@ -31,11 +31,17 @@ class AnnotationTranslator:
 
     def translate(self, annotation_name: str, rule_ast: AST):
         if annotation_name == "show_trace":
-            yield ShowTraceAnnotationRule(None, rule_ast.head, rule_ast.body).get_rule()
+            yield ShowTraceAnnotationRule(
+                location=None, head=rule_ast.head, body=rule_ast.body
+            ).get_rule()
         elif annotation_name == "trace":
-            yield TraceAnnotationRule(None, rule_ast.head, rule_ast.body).get_rule()
+            yield TraceAnnotationRule(
+                location=None, head=rule_ast.head, body=rule_ast.body
+            ).get_rule()
         elif annotation_name == "mute":
-            yield MuteAnnotationRule(None, rule_ast.head, rule_ast.body).get_rule()
+            yield MuteAnnotationRule(
+                location=None, head=rule_ast.head, body=rule_ast.body
+            ).get_rule()
 
 
 class RuleTranslator:
@@ -91,7 +97,9 @@ class RuleTranslator:
             ).get_rule()
         if self._trace_rule is not None and trace_rule_ast is not None:
             yield self._trace_rule(
-                rule_id, rule_ast.head, rule_ast.body, trace_rule_ast.head
+                rule_id=rule_id,
+                body=rule_ast.body,
+                trace_head=trace_rule_ast.head,
             ).get_rule()
 
 

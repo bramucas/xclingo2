@@ -47,6 +47,7 @@ _DEPENDS_HEAD = "_xclingo_sup_cause"
 _FBODY_HEAD = "_xclingo_fbody"
 _F_HEAD = "_xclingo_f"
 _DIRECT_CAUSE_HEAD = "_xclingo_direct_cause"
+_XCLINGO_CONSTRAINT_HEAD = "_xclingo_violated_constraint"
 
 ########### Element types ###########
 
@@ -292,20 +293,16 @@ class FiredBody:
 
 
 class SupportRule(ModelBody, SupLit, XclingoRule):
-    def __init__(self, rule_id: int, disjunction_id: int, head: AST, body: Sequence[AST], **kwargs):
-        super().__init__(
-            rule_id=rule_id, disjunction_id=disjunction_id, head=head, body=body, **kwargs
-        )
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     def translate_head(self, rule_id: int, disjunction_id: int, head: AST, body: Sequence[AST]):
         return self._reference_lit
 
 
 class FBodyRule(FiredBody, FbodyLit, XclingoRule):
-    def __init__(self, rule_id: int, disjunction_id: int, head: AST, body: Sequence[AST], **kwargs):
-        super().__init__(
-            rule_id=rule_id, disjunction_id=disjunction_id, head=head, body=body, **kwargs
-        )
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     def translate_head(self, rule_id: int, disjunction_id: int, head: AST, body: Sequence[AST]):
         return self._reference_lit
@@ -359,30 +356,28 @@ class TraceAnnotation:
 
 
 class TraceAnnotationRule(TraceAnnotation, ModelBody, XclingoRule):
-    def __init__(self, location: Location, head: AST, body: Sequence[AST]):
+    def __init__(self, head: AST, **kwargs):
         super().__init__(
             labelled=head.elements[0].terms[0],
             label=head.elements[0].terms[1],
             vars=head.elements[0].terms[2:],
             rule_id=None,
             disjunction_id=None,
-            location=location,
             head=head,
-            body=body,
+            **kwargs,
         )
 
 
 class TraceRuleAnnotationRule(TraceAnnotation, FiredBody, FLit, XclingoRule):
-    def __init__(self, rule_id: int, head: AST, body: Sequence[AST], trace_head: AST):
+    def __init__(self, trace_head: AST, **kwargs):
         super().__init__(
             labelled=Variable(loc, "Head"),
             label=trace_head.elements[0].terms[0],
             vars=trace_head.elements[0].terms[1:],
-            rule_id=rule_id,
             disjunction_id=Variable(loc, "DisID"),
             location=None,
             head=Variable(loc, "Head"),
-            body=body,
+            **kwargs,
         )
 
     def translate_body(self, body: Sequence[AST]):
@@ -390,19 +385,19 @@ class TraceRuleAnnotationRule(TraceAnnotation, FiredBody, FLit, XclingoRule):
 
 
 class MarkAnnotation(ModelBody, XclingoRule):
-    def __init__(self, wrapper: str, location: Location, head: AST, body: Sequence[AST]):
+    def __init__(self, wrapper: str, **kwargs):
         self._wrapper = wrapper
-        super().__init__(rule_id=None, disjunction_id=None, location=location, head=head, body=body)
+        super().__init__(rule_id=None, disjunction_id=None, **kwargs)
 
     def translate_head(self, rule_id: int, disjunction_id: int, head: AST, body: Sequence[AST]):
         return xclingo_positive_literal(self._wrapper, head.elements[0].terms[0])
 
 
 class ShowTraceAnnotationRule(MarkAnnotation):
-    def __init__(self, location: Location, head: AST, body: Sequence[AST]):
-        super().__init__(wrapper=_SHOW_TRACE_HEAD, location=location, head=head, body=body)
+    def __init__(self, **kwargs):
+        super().__init__(wrapper=_SHOW_TRACE_HEAD, **kwargs)
 
 
 class MuteAnnotationRule(MarkAnnotation):
-    def __init__(self, location: Location, head: AST, body: Sequence[AST]):
-        super().__init__(wrapper=_MUTE_HEAD, location=location, head=head, body=body)
+    def __init__(self, **kwargs):
+        super().__init__(wrapper=_MUTE_HEAD, **kwargs)
