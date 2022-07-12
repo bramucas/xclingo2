@@ -16,6 +16,7 @@ from ._xclingo_ast import (
     FBodyRule,
     DirectCauseRule,
     TraceRuleAnnotationRule,
+    RelaxedConstraint,
 )
 
 # TODO: fix location
@@ -23,6 +24,20 @@ loc = Location(
     Position("", 0, 0),
     Position("", 0, 0),
 )
+
+
+class RelaxedConstraintTranslator:
+    def __init__(self) -> None:
+        pass
+
+    def translate(self, rule_id: int, constraint_ast: AST):
+        yield RelaxedConstraint(
+            location=None,
+            disjunction_id=None,
+            rule_id=rule_id,
+            head=constraint_ast.head,
+            body=constraint_ast.body,
+        ).get_rule()
 
 
 class AnnotationTranslator:

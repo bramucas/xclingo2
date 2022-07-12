@@ -6,6 +6,7 @@ from typing import Tuple
 from xclingo import XclingoControl
 from xclingo.preprocessor import (
     ConstraintRelaxerPipeline,
+    ConstraintExplainingPipeline,
 )
 from xclingo.extensions import load_xclingo_extension
 
@@ -32,6 +33,7 @@ def xctl_constraint():
         ["0"],
         n_explanations="0",
         solving_preprocessor_pipeline=ConstraintRelaxerPipeline(),
+        explaining_preprocessor_pipeline=ConstraintExplainingPipeline(),
     )
     xctl.extend_explainer("base", [], load_xclingo_extension("violated_constraints_minimize.lp"))
     xctl.extend_explainer("base", [], load_xclingo_extension("violated_constraints_show_trace.lp"))

@@ -36,6 +36,8 @@ def check_options():
         choices=[
             "none",
             "explainer-program",
+            "unsat-solver-program",
+            "unsat-explainer-program",
         ],
         default="none",
     )

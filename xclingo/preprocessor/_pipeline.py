@@ -8,7 +8,10 @@ class PreprocessorPipeline:
     def __init__(self):
         self.preprocessors = list()
 
-    def register_preprocessor(self, preprocessor: Preprocessor):
+    def register_at_beginning(self, preprocessor: Preprocessor):
+        self.preprocessors.insert(0, preprocessor)
+
+    def register_at_end(self, preprocessor: Preprocessor):
         self.preprocessors.append(preprocessor)
 
     def translate(self, name: str, program: str):
@@ -21,12 +24,20 @@ class PreprocessorPipeline:
 class ConstraintRelaxerPipeline(PreprocessorPipeline):
     def __init__(self):
         super().__init__()
-        self.register_preprocessor(XClingoAnnotationPreprocessor())
-        self.register_preprocessor(ConstraintRelaxer(preserve_labels=False))
+        self.register_at_end(XClingoAnnotationPreprocessor())
+        self.register_at_end(ConstraintRelaxer())
 
 
 class DefaultExplainingPipeline(PreprocessorPipeline):
     def __init__(self):
         super().__init__()
-        self.register_preprocessor(XClingoAnnotationPreprocessor())
-        self.register_preprocessor(XClingoPreprocessor())
+        self.register_at_end(XClingoAnnotationPreprocessor())
+        self.register_at_end(XClingoPreprocessor())
+
+
+class ConstraintExplainingPipeline(PreprocessorPipeline):
+    def __init__(self):
+        super().__init__()
+        self.register_at_end(XClingoAnnotationPreprocessor())
+        self.register_at_end(ConstraintRelaxer(keep_annotations=True))
+        self.register_at_end(XClingoPreprocessor())

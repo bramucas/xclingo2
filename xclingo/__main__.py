@@ -3,6 +3,7 @@ from xclingo import XclingoControl
 from xclingo.preprocessor import (
     DefaultExplainingPipeline,
     ConstraintRelaxerPipeline,
+    ConstraintExplainingPipeline,
 )
 from xclingo.extensions import load_xclingo_extension
 
@@ -28,6 +29,7 @@ def _init_xclingo_control(
         [str(args.n[0])] + unknown_args,
         n_explanations=str(args.n[1]),
         solving_preprocessor_pipeline=ConstraintRelaxerPipeline() if constraints else None,
+        explaining_preprocessor_pipeline=ConstraintExplainingPipeline() if constraints else None,
     )
 
     if args.auto_tracing != "none":
@@ -69,8 +71,15 @@ def print_explainer_program(args):
         print(load_xclingo_extension("graph_locals.lp"))
         print(load_xclingo_extension("graph_styles.lp"))
 
+    if args.debug_output == "explainer-program":
+        pipe = DefaultExplainingPipeline()
+    elif args.debug_output == "unsat-explainer-program":
+        pipe = ConstraintExplainingPipeline()
+    elif args.debug_output == "unsat-solver-program":
+        pipe = ConstraintRelaxerPipeline()
+
     if len(args.infiles) > 0:
-        print(DefaultExplainingPipeline().translate("translation", read_files(args.infiles)))
+        print(pipe.translate("translation", read_files(args.infiles)))
 
 
 def render_graphs(args, xclingo_control: XclingoControl):
@@ -147,7 +156,7 @@ def main():
     args, unknown_args = check_options()
 
     # Prints translation and explainer lp and exits
-    if args.debug_output == "explainer-program":
+    if args.debug_output != "none":
         print_explainer_program(args)
         return 0
 

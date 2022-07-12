@@ -72,6 +72,20 @@ def xclingo_body_literal(wrapper_name: str, literal: AST):
     )
 
 
+def xclingo_constraint_head(rule_id: int, body: Sequence[AST]):
+    return Literal(
+        loc,
+        Sign.NoSign,
+        xclingo_wrap_symbols(
+            _XCLINGO_CONSTRAINT_HEAD,
+            [
+                SymbolicTerm(loc, Number(rule_id)),
+                Function(loc, "", list(collect_free_vars(body)), False),
+            ],
+        ),
+    )
+
+
 def xclingo_label_head_literal(labelled: AST, label: AST, vars: Sequence[AST]):
     external_func = Function(
         location=loc,
@@ -165,29 +179,6 @@ def xclingo_conditional_literal(
     )
 
 
-def _xclingo_constraint_head(rule_id: int, lit_list: Sequence[AST]):
-    return Literal(
-        location=loc,
-        sign=Sign.NoSign,
-        atom=SymbolicAtom(
-            Function(
-                loc,
-                f"_xclingo_violated_constraint",
-                [
-                    SymbolicTerm(loc, Number(rule_id)),
-                    Function(
-                        loc,
-                        "",
-                        list(propagates(lit_list)),
-                        False,
-                    ),  # tuple
-                ],
-                False,
-            )
-        ),
-    )
-
-
 ########### Rule types ###########
 
 
@@ -209,6 +200,9 @@ class XclingoRule:
 
     def get_rule(self):
         return self._rule
+
+
+####### Reference Lit
 
 
 class ReferenceLit:
@@ -242,6 +236,18 @@ class FbodyLit(ReferenceLit):
 class FLit(ReferenceLit):
     def __init__(self, **kwargs):
         super().__init__(func_name=_F_HEAD, **kwargs)
+
+
+####### Bodies
+
+
+class DoNothingBody:
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def translate_body(self, body: Sequence[AST]):
+        for lit in body:
+            yield lit
 
 
 class ModelBody:
@@ -292,6 +298,9 @@ class FiredBody:
                 yield lit
 
 
+####### Rules
+
+
 class SupportRule(ModelBody, SupLit, XclingoRule):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -306,6 +315,17 @@ class FBodyRule(FiredBody, FbodyLit, XclingoRule):
 
     def translate_head(self, rule_id: int, disjunction_id: int, head: AST, body: Sequence[AST]):
         return self._reference_lit
+
+
+class RelaxedConstraint(DoNothingBody, XclingoRule):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def translate_head(self, rule_id: int, disjunction_id: int, head: AST, body: Sequence[AST]):
+        return xclingo_constraint_head(rule_id, body)
+
+
+####### Depends
 
 
 class Depends:
@@ -342,6 +362,9 @@ class DirectCauseRule(Depends, FiredBody, FLit, XclingoRule):
 
     def translate_head(self, rule_id: int, disjunction_id: int, head: AST, body: Sequence[AST]):
         return xclingo_dependency_head_literal(None, _DIRECT_CAUSE_HEAD, head, self._causes)
+
+
+####### Traces
 
 
 class TraceAnnotation:
@@ -382,6 +405,9 @@ class TraceRuleAnnotationRule(TraceAnnotation, FiredBody, FLit, XclingoRule):
 
     def translate_body(self, body: Sequence[AST]):
         yield self._reference_lit
+
+
+####### Annotations that mark atoms
 
 
 class MarkAnnotation(ModelBody, XclingoRule):
