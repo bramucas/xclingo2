@@ -1,38 +1,25 @@
-from typing import Callable, Iterator, Sequence, Union
+from typing import Sequence, Union
 from clingo.ast import (
     AST,
     Location,
-    Position,
     ASTType,
     Sign,
 )
 from clingo.ast import (
-    Literal,
     Rule,
-    SymbolicAtom,
-    Function,
-    BodyAggregate,
-    BodyAggregateElement,
-    ConditionalLiteral,
-    SymbolicTerm,
-    Pool,
     Variable,
+    Function,
 )
-from clingo import (
-    Number,
-)
-
-from ._utils import (
+from ._ast_shortcuts import (
+    xclingo_dependency_head_literal,
+    xclingo_body_aggregate_literal,
+    xclingo_conditional_literal,
+    literal,
     collect_free_vars,
-    propagates,
+    loc,
 )
 
 ########### Constants ###########
-
-loc = Location(
-    Position("", 0, 0),
-    Position("", 0, 0),
-)
 
 _MODEL_WRAPPER = "_xclingo_model"
 _F_ATOM_WRAPPER = "_xclingo_f_atom"
@@ -49,144 +36,23 @@ _F_HEAD = "_xclingo_f"
 _DIRECT_CAUSE_HEAD = "_xclingo_direct_cause"
 _XCLINGO_CONSTRAINT_HEAD = "_xclingo_violated_constraint"
 
-########### Element types ###########
-
-
-def xclingo_wrap_symbols(wrapper_name: str, symbols: AST):
-    return SymbolicAtom(Function(loc, wrapper_name, symbols, False))
-
-
-def xclingo_positive_literal(wrapper_name: str, symbol: AST):
-    return Literal(
-        loc,
-        Sign.NoSign,
-        xclingo_wrap_symbols(wrapper_name, [symbol]),
-    )
-
-
-def xclingo_body_literal(wrapper_name: str, literal: AST):
-    return Literal(
-        loc,
-        literal.sign,
-        xclingo_wrap_symbols(wrapper_name, [literal.atom.symbol]),
-    )
-
-
-def xclingo_constraint_head(rule_id: int, body: Sequence[AST]):
-    return Literal(
-        loc,
-        Sign.NoSign,
-        xclingo_wrap_symbols(
-            _XCLINGO_CONSTRAINT_HEAD,
-            [
-                SymbolicTerm(loc, Number(rule_id)),
-                Function(loc, "", list(collect_free_vars(body)), False),
-            ],
-        ),
-    )
-
-
-def xclingo_label_head_literal(labelled: AST, label: AST, vars: Sequence[AST]):
-    external_func = Function(
-        location=loc,
-        name="label",
-        arguments=[label, Function(loc, "", vars, False)],
-        external=True,
-    )
-    return Literal(
-        loc,
-        Sign.NoSign,
-        xclingo_wrap_symbols(_TRACE_HEAD, [labelled, external_func]),
-    )
-
-
-def xclingo_rule_head_literal(
-    rule_id: Union[int, AST],
-    disjunction_id: Union[int, AST],
-    function_name: str,
-    rule_head: AST,
-    rule_body: Sequence[AST],
-):
-    return Literal(
-        loc,
-        Sign.NoSign,
-        SymbolicAtom(
-            Function(
-                loc,
-                function_name,
-                [
-                    SymbolicTerm(loc, Number(rule_id)) if isinstance(rule_id, int) else rule_id,
-                    SymbolicTerm(loc, Number(disjunction_id))
-                    if isinstance(disjunction_id, int)
-                    else disjunction_id,
-                    rule_head.atom if rule_head.ast_type == ASTType.Literal else rule_head,
-                    Function(loc, "", list(collect_free_vars(rule_body)), False),  # tuple
-                ],
-                False,
-            )
-        ),
-    )
-
-
-def xclingo_dependency_head_literal(
-    location: Location, function_name: str, effect: AST, causes: Sequence[AST]
-):
-    return Literal(
-        loc,
-        Sign.NoSign,
-        SymbolicAtom(
-            Function(
-                loc,
-                function_name,
-                [effect, Pool(loc, causes)],
-                False,
-            )
-        ),
-    )
-
-
-def xclingo_body_aggregate_literal(
-    transformer_function: Callable[[Sequence[AST]], Iterator[AST]], literal: AST
-):
-    return Literal(
-        loc,
-        literal.sign,
-        BodyAggregate(
-            loc,
-            left_guard=literal.atom.left_guard,
-            function=literal.atom.function,
-            elements=[
-                BodyAggregateElement(
-                    terms=list(transformer_function(e.terms)),
-                    condition=list(transformer_function(e.condition)),
-                )
-                for e in literal.atom.elements
-            ],
-            right_guard=literal.atom.right_guard,
-        ),
-    )
-
-
-def xclingo_conditional_literal(
-    lit_wrapper: str,
-    transformer_function: Callable[[Sequence[AST]], Iterator[AST]],
-    conditional_literal: AST,
-):
-    return ConditionalLiteral(
-        loc,
-        literal=xclingo_body_literal(lit_wrapper, conditional_literal.literal),
-        condition=list(transformer_function(conditional_literal.condition)),
-    )
-
 
 ########### Rule types ###########
 
 
-class XclingoRule:
+class XclingoAST:
+    def __init__(self):
+        pass
+
+    def get_ast(self):
+        return self._ast
+
+
+class XclingoRule(XclingoAST):
     def __init__(
         self, rule_id: int, disjunction_id: int, location: Location, head: AST, body: Sequence[AST]
     ):
-        self._rule = Rule(
+        self._ast = Rule(
             location=loc,
             head=self.translate_head(rule_id, disjunction_id, head, body),
             body=list(self.translate_body(body)),
@@ -197,9 +63,6 @@ class XclingoRule:
 
     def translate_body(self, body: Sequence[AST]):
         raise NotImplementedError("This method is intended to be override")
-
-    def get_rule(self):
-        return self._rule
 
 
 ####### Reference Lit
@@ -215,8 +78,9 @@ class ReferenceLit:
         body: Sequence[AST],
         **kwargs,
     ):
-        self._reference_lit = xclingo_rule_head_literal(
-            rule_id, disjunction_id, func_name, head, body
+        self._reference_lit = literal(
+            func_name,
+            [rule_id, disjunction_id, head, list(collect_free_vars(body))],
         )
         super().__init__(
             rule_id=rule_id, disjunction_id=disjunction_id, head=head, body=body, **kwargs
@@ -258,7 +122,7 @@ class ModelBody:
         for lit in body:
             if lit.ast_type == ASTType.Literal:
                 if lit.atom.ast_type == ASTType.SymbolicAtom:
-                    yield xclingo_body_literal(_MODEL_WRAPPER, lit)
+                    yield literal(_MODEL_WRAPPER, [lit], sign=lit.sign)
 
                 elif lit.atom.ast_type == ASTType.BodyAggregate:
                     yield xclingo_body_aggregate_literal(self.translate_body, lit)
@@ -282,9 +146,9 @@ class FiredBody:
             if lit.ast_type == ASTType.Literal:
                 if lit.atom.ast_type == ASTType.SymbolicAtom:
                     if lit.sign == Sign.NoSign:
-                        yield xclingo_body_literal(_F_ATOM_WRAPPER, lit)
+                        yield literal(_F_ATOM_WRAPPER, [lit], sign=lit.sign)
                     else:
-                        yield xclingo_body_literal(_MODEL_WRAPPER, lit)
+                        yield literal(_MODEL_WRAPPER, [lit], sign=lit.sign)
 
                 elif lit.atom.ast_type == ASTType.BodyAggregate:
                     yield xclingo_body_aggregate_literal(self.translate_body, lit)
@@ -322,7 +186,9 @@ class RelaxedConstraint(DoNothingBody, XclingoRule):
         super().__init__(**kwargs)
 
     def translate_head(self, rule_id: int, disjunction_id: int, head: AST, body: Sequence[AST]):
-        return xclingo_constraint_head(rule_id, body)
+        return literal(
+            _XCLINGO_CONSTRAINT_HEAD, [rule_id, list(collect_free_vars(body))], sign=Sign.NoSign
+        )
 
 
 ####### Depends
@@ -375,7 +241,13 @@ class TraceAnnotation:
         super().__init__(**kwargs)
 
     def translate_head(self, rule_id: int, disjunction_id: int, head: AST, body: Sequence[AST]):
-        return xclingo_label_head_literal(self.labelled, self.label, self.vars)
+        external_function = Function(
+            location=loc,
+            name="label",
+            arguments=[self.label, Function(loc, "", self.vars, False)],
+            external=True,
+        )
+        return literal(_TRACE_HEAD, [self.labelled, external_function], sign=Sign.NoSign)
 
 
 class TraceAnnotationRule(TraceAnnotation, ModelBody, XclingoRule):
@@ -416,7 +288,7 @@ class MarkAnnotation(ModelBody, XclingoRule):
         super().__init__(rule_id=None, disjunction_id=None, **kwargs)
 
     def translate_head(self, rule_id: int, disjunction_id: int, head: AST, body: Sequence[AST]):
-        return xclingo_positive_literal(self._wrapper, head.elements[0].terms[0])
+        return literal(self._wrapper, [head.elements[0].terms[0]], sign=Sign.NoSign)
 
 
 class ShowTraceAnnotationRule(MarkAnnotation):

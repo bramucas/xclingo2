@@ -1,14 +1,17 @@
 from typing import Sequence
-from clingo import ast
-from ._utils import (
+from clingo.ast import (
+    AST,
+    ASTType,
+)
+from clingo.ast import parse_string
+from .xclingo_ast import (
     is_choice_rule,
     is_constraint,
     is_disyunctive_head,
     xclingo_annotation,
 )
 
-from ._transformers import (
-    loc,
+from ._translator import (
     SupportTranslator,
     FTranslator,
     AnnotationTranslator,
@@ -23,14 +26,14 @@ class Preprocessor:
     def reset(self) -> None:
         self._translation = ""
 
-    def preprocess_rule(self, rule_ast: ast.AST) -> Sequence[ast.AST]:
+    def preprocess_rule(self, rule_ast: AST) -> Sequence[AST]:
         raise RuntimeError("This method is intended to be override")
 
-    def _add_to_translation(self, rule_asts: Sequence[ast.AST]):
+    def _add_to_translation(self, rule_asts: Sequence[AST]):
         """Adds the given rule to the internal translation.
 
         Args:
-            rule_ast (ast.AST): the rule to add to the translation.
+            rule_ast (AST): the rule to add to the translation.
         """
         for ra in rule_asts:
             self._translation += f"{ra}\n"
@@ -51,7 +54,7 @@ class Preprocessor:
             name (str, optional): Defaults to "".
         """
         self._translation = ""
-        ast.parse_string(
+        parse_string(
             program,
             lambda ast: self._add_to_translation(self.preprocess_rule(ast)),
         )
@@ -65,7 +68,7 @@ class XClingoAnnotationPreprocessor(Preprocessor):
     def reset(self) -> None:
         super().reset()
 
-    def preprocess_rule(self, rule_ast: ast.AST) -> None:
+    def preprocess_rule(self, rule_ast: AST) -> None:
         yield rule_ast
 
     def process_program(self, program: str):
@@ -98,21 +101,21 @@ class ConstraintRelaxer(Preprocessor):
         self._constraint_count += 1
         return n
 
-    def preprocess_rule(self, rule_ast: ast.AST):
+    def preprocess_rule(self, rule_ast: AST):
         """Preprocess the given rule and adds the result to the translation.
 
         Labelled constraints are transformed into their relaxed form. The rest of the program is
         unchanged.
 
         Args:
-            rule_ast (ast.AST): rule to be preprocessed and added to the translation.
+            rule_ast (AST): rule to be preprocessed and added to the translation.
         """
         self._add_comment_to_translation(rule_ast)
         # Ignore #shows
-        if rule_ast.ast_type == ast.ASTType.ShowSignature:
+        if rule_ast.ast_type == ASTType.ShowSignature:
             return
 
-        if rule_ast.ast_type != ast.ASTType.Rule:
+        if rule_ast.ast_type != ASTType.Rule:
             yield rule_ast  # Things that are not rules are just passed
         else:
             annotation_name = xclingo_annotation(rule_ast)
@@ -173,35 +176,41 @@ class XClingoPreprocessor(Preprocessor):
         self._rule_count += 1
         return n
 
-    def translate_annotation(self, annotation_name: str, rule_ast: ast.AST):
+    def translate_annotation(self, annotation_name: str, rule_ast: AST):
         for translated_annotation in self._annotation_translator.translate(
             annotation_name, rule_ast
         ):
             yield translated_annotation
 
-    def translate_rules(self, rule_id: int, disjunction_id: int, rule_ast: ast.AST):
+    def translate_rule(
+        self,
+        rule_id: int,
+        disjunction_id: int,
+        original_head: AST,
+        original_body: Sequence[AST],
+    ):
         for translator in (self._support_translator, self._fired_translator):
             for translated_rule in translator.translate(
-                rule_id, disjunction_id, rule_ast, self._last_trace_rule
+                rule_id, disjunction_id, original_head, original_body, self._last_trace_rule
             ):
                 yield translated_rule
 
-    def preprocess_rule(self, rule_ast: ast.ASTType.Rule):
+    def preprocess_rule(self, rule_ast: ASTType.Rule):
         """Translates a given rule into its xclingo translation and adds it to the translation.
         Before every addition, a comment containing the original rule is also added.
 
         Not traced constraints will be ignored.
 
         Args:
-            rule_ast (ast.ASTType.Rule): rule to be translated.
+            rule_ast (ASTType.Rule): rule to be translated.
         """
         # Ignore #shows
-        if rule_ast.ast_type == ast.ASTType.ShowSignature:
+        if rule_ast.ast_type == ASTType.ShowSignature:
             return
         # TODO: what to do with externals?
         # TODO: which other things
         self._add_comment_to_translation(rule_ast)
-        if rule_ast.ast_type != ast.ASTType.Rule:
+        if rule_ast.ast_type != ASTType.Rule:
             yield rule_ast  # Things that are not rules are just passed
         else:
             # Checks if it is an xclingo annotation
@@ -219,23 +228,28 @@ class XClingoPreprocessor(Preprocessor):
 
                 if is_choice_rule(rule_ast):
                     for cond_lit in rule_ast.head.elements:
-                        rule_ast = ast.Rule(
-                            loc, cond_lit.literal, list(cond_lit.condition) + list(rule_ast.body)
-                        )
-                        for r in self.translate_rules(rule_id, 0, rule_ast):
+
+                        for r in self.translate_rule(
+                            rule_id,
+                            0,
+                            cond_lit.literal,
+                            list(cond_lit.condition) + list(rule_ast.body),
+                        ):
                             yield r
 
                 elif is_disyunctive_head(rule_ast):
                     disjunction_id = 0
                     for cond_lit in rule_ast.head.elements:
-                        rule_ast = ast.Rule(
-                            loc, cond_lit.literal, list(cond_lit.condition) + list(rule_ast.body)
-                        )
-                        for r in self.translate_rules(rule_id, disjunction_id, rule_ast):
+                        for r in self.translate_rule(
+                            rule_id,
+                            disjunction_id,
+                            cond_lit.literal,
+                            list(cond_lit.condition) + list(rule_ast.body),
+                        ):
                             yield r
                         disjunction_id += 1
                 elif not is_constraint(rule_ast):
-                    for r in self.translate_rules(rule_id, 0, rule_ast):
+                    for r in self.translate_rule(rule_id, 0, rule_ast.head, rule_ast.body):
                         yield r
 
                 self._last_trace_rule = None

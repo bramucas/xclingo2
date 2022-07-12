@@ -1,13 +1,7 @@
 from clingo.ast import AST, Location, Position
 from typing import Sequence
 
-from ._utils import (
-    propagates,
-    aggregates,
-    conditional_literals,
-)
-
-from ._xclingo_ast import (
+from .xclingo_ast import (
     ShowTraceAnnotationRule,
     TraceAnnotationRule,
     MuteAnnotationRule,
@@ -17,6 +11,11 @@ from ._xclingo_ast import (
     DirectCauseRule,
     TraceRuleAnnotationRule,
     RelaxedConstraint,
+)
+from .xclingo_ast import (
+    propagates,
+    aggregates,
+    conditional_literals,
 )
 
 # TODO: fix location
@@ -37,7 +36,7 @@ class RelaxedConstraintTranslator:
             rule_id=rule_id,
             head=constraint_ast.head,
             body=constraint_ast.body,
-        ).get_rule()
+        ).get_ast()
 
 
 class AnnotationTranslator:
@@ -48,15 +47,15 @@ class AnnotationTranslator:
         if annotation_name == "show_trace":
             yield ShowTraceAnnotationRule(
                 location=None, head=rule_ast.head, body=rule_ast.body
-            ).get_rule()
+            ).get_ast()
         elif annotation_name == "trace":
             yield TraceAnnotationRule(
                 location=None, head=rule_ast.head, body=rule_ast.body
-            ).get_rule()
+            ).get_ast()
         elif annotation_name == "mute":
             yield MuteAnnotationRule(
                 location=None, head=rule_ast.head, body=rule_ast.body
-            ).get_rule()
+            ).get_ast()
 
 
 class RuleTranslator:
@@ -66,56 +65,56 @@ class RuleTranslator:
         self._trace_rule = trace_rule
 
     def translate(
-        self, rule_id, disjunction_id, rule_ast: AST, trace_rule_ast: AST
+        self, rule_id, disjunction_id, rule_head: AST, rule_body: Sequence[AST], trace_rule_ast: AST
     ) -> Sequence[AST]:
         yield self._rule(
             rule_id=rule_id,
             disjunction_id=disjunction_id,
             location=None,
-            head=rule_ast.head,
-            body=rule_ast.body,
-        ).get_rule()
-        if rule_ast.body:
-            causes = list(propagates(rule_ast.body))
+            head=rule_head,
+            body=rule_body,
+        ).get_ast()
+        if rule_body:
+            causes = list(propagates(rule_body))
             if causes:
                 yield self._depends(
                     rule_id=rule_id,
                     disjunction_id=disjunction_id,
                     location=None,
-                    head=rule_ast.head,
-                    body=rule_ast.body,
+                    head=rule_head,
+                    body=rule_body,
                     extra_body=[],
                     causes=causes,
-                ).get_rule()
-        for agg_element in aggregates(rule_ast.body):
+                ).get_ast()
+        for agg_element in aggregates(rule_body):
             causes = list(propagates(agg_element.condition))
             if causes:
                 yield self._depends(
                     rule_id=rule_id,
                     disjunction_id=disjunction_id,
                     location=None,
-                    head=rule_ast.head,
-                    body=rule_ast.body,
+                    head=rule_head,
+                    body=rule_body,
                     extra_body=agg_element.condition,
                     causes=causes,
-                ).get_rule()
-        for cond_lit in conditional_literals(rule_ast.body):
+                ).get_ast()
+        for cond_lit in conditional_literals(rule_body):
             causes = list(propagates(cond_lit.condition))
             yield self._depends(
                 rule_id=rule_id,
                 disjunction_id=disjunction_id,
                 location=None,
-                head=rule_ast.head,
-                body=rule_ast.body,
+                head=rule_head,
+                body=rule_body,
                 extra_body=cond_lit.condition,
                 causes=[cond_lit.literal] + causes,
-            ).get_rule()
+            ).get_ast()
         if self._trace_rule is not None and trace_rule_ast is not None:
             yield self._trace_rule(
                 rule_id=rule_id,
-                body=rule_ast.body,
+                body=rule_body,
                 trace_head=trace_rule_ast.head,
-            ).get_rule()
+            ).get_ast()
 
 
 class SupportTranslator(RuleTranslator):
