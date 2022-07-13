@@ -30,7 +30,7 @@ _MUTE_HEAD = "_xclingo_muted"
 _TRACE_HEAD = "_xclingo_label"
 
 _SUP_HEAD = "_xclingo_sup"
-_DEPENDS_HEAD = "_xclingo_sup_cause"
+_DEPENDS_HEAD = "_xclingo_depends"
 _FBODY_HEAD = "_xclingo_fbody"
 _F_HEAD = "_xclingo_f"
 _DIRECT_CAUSE_HEAD = "_xclingo_direct_cause"
@@ -214,9 +214,7 @@ class DependsRule(Depends, ModelBody, SupLit, XclingoRule):
         super().__init__(**kwargs)
 
     def translate_head(self, rule_id: int, disjunction_id: int, head: AST, body: Sequence[AST]):
-        return xclingo_dependency_head_literal(
-            None, _DEPENDS_HEAD, self._reference_lit, self._causes
-        )
+        return xclingo_dependency_head_literal(None, _DEPENDS_HEAD, head, self._causes)
 
 
 class DirectCauseRule(Depends, FiredBody, FLit, XclingoRule):
