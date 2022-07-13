@@ -62,9 +62,11 @@ class TestXclingo:
         ("dont_drive_drunk", xctl_none()),  # 15
         ("happy", xctl_none()),
         ("ignore_shows", xctl_all()),
+        ("obligations_gentle_killer", xctl_none()),
         ("pool_and_choice", xctl_none()),
-        ("pool_and_choice2", xctl_none()),
-        ("unbalanced_table", xctl_all()),  # 20
+        ("pool_and_choice2", xctl_none()),  # 20
+        ("single_strongneg", xctl_none()),
+        ("unbalanced_table", xctl_all()),  # 22
     ]
 
     @pytest.mark.parametrize("params", cases)

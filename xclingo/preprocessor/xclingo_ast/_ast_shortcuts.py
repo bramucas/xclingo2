@@ -89,13 +89,21 @@ def conditional_literals(lit_list: Sequence[AST]):
 
 
 def collect_free_vars(lit_list: Sequence[AST]):
+    def collect_vars(lit: AST):
+        if lit.atom.symbol.ast_type == ASTType.UnaryOperation:
+            arguments = lit.atom.symbol.argument.arguments
+        else:
+            arguments = lit.atom.symbol.arguments
+        for arg in arguments:
+            if arg.ast_type == ASTType.Variable:
+                yield str(arg.name)
+
     seen_vars, unsafe_vars = set(), set()
     for lit in lit_list:
         # handle conditional literals
         if lit.ast_type == ASTType.ConditionalLiteral:
-            for arg in lit.literal.atom.symbol.arguments:
-                if arg.ast_type == ASTType.Variable:
-                    unsafe_vars.add(str(arg.name))
+            for var_name in collect_vars(lit.literal):
+                unsafe_vars.add(var_name)
             continue
 
         # handle comparisons
@@ -111,9 +119,8 @@ def collect_free_vars(lit_list: Sequence[AST]):
 
         # handle positive body literals
         elif lit.atom.ast_type == ASTType.SymbolicAtom:
-            for arg in lit.atom.symbol.arguments:
-                if arg.ast_type == ASTType.Variable:
-                    seen_vars.add(str(arg.name))
+            for var_name in collect_vars(lit):
+                seen_vars.add(var_name)
             continue
 
     for var_name in seen_vars:
