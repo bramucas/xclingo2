@@ -6,7 +6,8 @@ from xclingo.preprocessor import (
     ConstraintExplainingPipeline,
 )
 from xclingo.extensions import load_xclingo_extension
-
+from xclingo.error import ModelControlGroundingError, ModelControlParsingError
+from xclingo.explainer.error import ExplanationControlParsingError, ExplanationControlGroundingError
 from ._utils import print_header, print_version
 from ._arguments_handler import check_options
 
@@ -151,22 +152,7 @@ def into_pickle(args, xclingo_control: XclingoControl, save_on_unsat=False):
     return False
 
 
-def main():
-    """Main function. Checks command line arguments and acts in consequence."""
-    args, unknown_args = check_options()
-
-    # Prints translation and explainer lp and exits
-    if args.debug_output != "none":
-        print_explainer_program(args)
-        return 0
-
-    # Prints translation and exits
-    if args.output == "translation":
-        print(DefaultExplainingPipeline().translate("translation", read_files(args.infiles)))
-        return 0
-
-    print_header(args)
-    programs = read_files(args.infiles)
+def ground_solve_explain(args, unknown_args, programs):
 
     xclingo_control = _init_xclingo_control(args, unknown_args, programs)
     if args.picklefile:  # default value: ""
@@ -186,6 +172,37 @@ def main():
             print("UNSATISFIABLE")
             print(f"Relaxing constraints... (mode={args.constraint_explaining})")
             solve_explain(args, xclingo_control)
+
+
+def main():
+    """Main function. Checks command line arguments and acts in consequence."""
+    args, unknown_args = check_options()
+
+    # Prints translation and explainer lp and exits
+    if args.debug_output != "none":
+        print_explainer_program(args)
+        return 0
+
+    # Prints translation and exits
+    if args.output == "translation":
+        print(DefaultExplainingPipeline().translate("translation", read_files(args.infiles)))
+        return 0
+
+    print_header(args)
+    programs = read_files(args.infiles)
+
+    try:
+        ground_solve_explain(args, unknown_args, programs)
+    except ModelControlParsingError as e:
+        print("*** ERROR: (clingo, original program)", e)
+        exit(1)
+    except ModelControlGroundingError as e:
+        print("*** ERROR: (clingo, original program)", e)
+        exit(1)
+    except ExplanationControlParsingError as e:
+        print("*** ERROR: (xclingo, explainer program)", e)
+    except ExplanationControlGroundingError as e:
+        print("*** ERROR: (xclingo, explainer program)", e)
 
 
 if __name__ == "__main__":

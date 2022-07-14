@@ -1,5 +1,5 @@
 from clingo import Symbol
-from typing import Sequence, Union, Tuple
+from typing import Sequence, Union, Tuple, Any
 from clingo import Model, Logger
 from clingo.control import Control
 from xclingo.explanation import ExplanationGraphModel
@@ -10,6 +10,8 @@ from xclingo.preprocessor import PreprocessorPipeline
 from xclingo.preprocessor import DefaultExplainingPipeline
 
 from xclingo.explainer._logger import XclingoLogger
+
+from xclingo.error import ModelControlGroundingError, ModelControlParsingError
 
 
 class XClingoModel(Model):
@@ -60,17 +62,22 @@ class XclingoControl(Control):
             name (str): name of program block to add.
             program (str): a logic program in ASP format.
         """
-        super().add(name, parameters, self.pre_solving_pipeline.translate(name, program))
+        try:
+            super().add(name, parameters, self.pre_solving_pipeline.translate(name, program))
+        except RuntimeError as e:
+            raise ModelControlParsingError(e)
         self.explainer.add(name, parameters, self.pre_explaining_pipeline.translate(name, program))
+
+    def ground(self, parts: Sequence[Tuple[str, Sequence[Symbol]]], context: Any = None) -> None:
+        try:
+            super().ground(parts, context)
+        except RuntimeError as e:
+            raise ModelControlGroundingError(e)
 
     def extend_explainer(self, name: str, parameters: Sequence[str], program: str) -> None:
         self.explainer.add(name, parameters, program)
 
     def add_show_trace(self, atom: Symbol, conditions: Sequence[Tuple[bool, Symbol]] = []):
-        rule = "_xclingo_show_trace({atom}) :- _xclingo_model({atom}), {body}.".format(
-            atom=str(atom),
-            body=",".join(f"{'' if sign else 'not'} {str(s)}" for sign, s in conditions),
-        )
         self.explainer.add("base", [], f"_xclingo_show_trace({str(atom)}) :- .")
 
     def solve(self, on_unsat=None) -> Sequence[XClingoModel]:

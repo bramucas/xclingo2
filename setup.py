@@ -40,6 +40,7 @@ setuptools.setup(
         "xclingo.xclingo_lp",
         "xclingo.explainer",
         "xclingo.extensions",
+        "xclingo.error",
     ],
     entry_points={"console_scripts": ["xclingo=xclingo.__main__:main"]},
 )

@@ -4,6 +4,7 @@ from clingo.control import Control
 from xclingo.explanation import ExplanationGraphModel
 from xclingo.xclingo_lp import FIRED_LP, GRAPH_LP, SHOW_LP
 from ._utils import XClingoContext
+from .error import ExplanationControlGroundingError, ExplanationControlParsingError
 
 
 class Explainer:
@@ -47,14 +48,20 @@ class Explainer:
         ctl.add("base", [], GRAPH_LP)
         ctl.add("base", [], SHOW_LP)
         # Translations and extensions
-        for name, parameters, program in self.programs:
-            ctl.add(name, parameters, program)
+        try:
+            for name, parameters, program in self.programs:
+                ctl.add(name, parameters, program)
+        except RuntimeError as e:
+            raise ExplanationControlParsingError(e)
         # Adds model (TODO: is it possible to do this with just one control?)
         with ctl.backend() as back:
             for sym in model.symbols(atoms=True):
                 back.add_rule([back.add_atom(Function("_xclingo_model", [sym], True))], [], False)
         # Ground
-        ctl.ground([("base", [])], context=context if context is not None else XClingoContext())
+        try:
+            ctl.ground([("base", [])], context=context if context is not None else XClingoContext())
+        except RuntimeError as e:
+            raise ExplanationControlGroundingError(e)
         # Solve
         if on_explanation is not None:
             ctl.solve(on_model=on_explanation)
