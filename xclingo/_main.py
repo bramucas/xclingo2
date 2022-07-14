@@ -12,6 +12,7 @@ from xclingo.preprocessor import DefaultExplainingPipeline
 from xclingo.explainer._logger import XclingoLogger
 
 from xclingo.error import ModelControlGroundingError, ModelControlParsingError
+from xclingo.explainer.error import ExplanationControlGroundingError, ExplanationControlParsingError
 
 
 class XClingoModel(Model):
@@ -66,7 +67,12 @@ class XclingoControl(Control):
             super().add(name, parameters, self.pre_solving_pipeline.translate(name, program))
         except RuntimeError as e:
             raise ModelControlParsingError(e)
-        self.explainer.add(name, parameters, self.pre_explaining_pipeline.translate(name, program))
+        try:
+            self.explainer.add(
+                name, parameters, self.pre_explaining_pipeline.translate(name, program)
+            )
+        except RuntimeError as e:
+            raise ExplanationControlParsingError(e)
 
     def ground(self, parts: Sequence[Tuple[str, Sequence[Symbol]]], context: Any = None) -> None:
         try:
