@@ -5,6 +5,7 @@ from .xclingo_ast import (
     ShowTraceAnnotationRule,
     TraceAnnotationRule,
     MuteAnnotationRule,
+    MuteRuleAnnotation,
     SupportRule,
     DependsRule,
     TraceRuleAnnotationRule,
@@ -15,6 +16,7 @@ from .xclingo_ast import (
     aggregates,
     conditional_literals,
 )
+from enum import Enum
 
 # TODO: fix location
 loc = Location(
@@ -37,23 +39,40 @@ class RelaxedConstraintTranslator:
         ).get_ast()
 
 
+class AnnotationNames(dict):
+    _SHOW_TRACE = "show_trace"
+    _TRACE = "trace"
+    _TRACE_RULE = "trace_rule"
+    _MUTE = "mute"
+    _MUTE_BODY = "mute_body"
+
+    @staticmethod
+    def all():
+        return [
+            v for k, v in AnnotationNames.__dict__.items() if not k.startswith("__") and k != "all"
+        ]
+
+
 class AnnotationTranslator:
     def __init__(self):
-        pass
+        self._annotation_asts = {
+            AnnotationNames._SHOW_TRACE: ShowTraceAnnotationRule,
+            AnnotationNames._TRACE: TraceAnnotationRule,
+            AnnotationNames._MUTE: MuteAnnotationRule,
+            AnnotationNames._MUTE_BODY: MuteRuleAnnotation,
+        }
 
-    def translate(self, annotation_name: str, rule_ast: AST):
-        if annotation_name == "show_trace":
-            yield ShowTraceAnnotationRule(
-                location=None, head=rule_ast.head, body=rule_ast.body
+    def translate(self, annotation_name: str, rule_ast: AST, rule_id: int):
+        if annotation_name in self._annotation_asts:
+            yield self._annotation_asts[annotation_name](
+                location=None,
+                head=rule_ast.head,
+                body=rule_ast.body,
+                rule_id=rule_id,
+                disjunction_id=None,
             ).get_ast()
-        elif annotation_name == "trace":
-            yield TraceAnnotationRule(
-                location=None, head=rule_ast.head, body=rule_ast.body
-            ).get_ast()
-        elif annotation_name == "mute":
-            yield MuteAnnotationRule(
-                location=None, head=rule_ast.head, body=rule_ast.body
-            ).get_ast()
+        else:
+            raise RuntimeError(f"Unknown annotation name: {annotation_name}")
 
 
 class RuleTranslator:
@@ -110,6 +129,7 @@ class RuleTranslator:
         if self._trace_rule is not None and trace_rule_ast is not None:
             yield self._trace_rule(
                 rule_id=rule_id,
+                location=None,
                 body=rule_body,
                 trace_head=trace_rule_ast.head,
             ).get_ast()

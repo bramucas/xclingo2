@@ -19,4 +19,4 @@ _xclingo_fbody(R, D, Atom, Vars) :-
 
 _xclingo_f_atom(Atom) :- _xclingo_f(_, _, Atom, _).
 
-_xclingo_direct_cause(Effect, Cause) :- _xclingo_f(RuleId, DisID, Effect, Vars), _xclingo_depends(_xclingo_sup(RuleId, DisID, Effect, Vars), Cause).
+_xclingo_direct_cause(RuleID, Effect, Cause) :- _xclingo_f(RuleID, DisID, Effect, Vars), _xclingo_depends(_xclingo_sup(RuleID, DisID, Effect, Vars), Cause).

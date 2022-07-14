@@ -153,13 +153,6 @@ def is_constraint(rule_ast):
     return False
 
 
-def xclingo_annotation(rule_ast):
-    if rule_ast.ast_type == ASTType.Rule and rule_ast.head.ast_type == ASTType.TheoryAtom:
-        if rule_ast.head.term.name in ["show_trace", "trace", "mute", "trace_rule"]:
-            return rule_ast.head.term.name
-    return None
-
-
 def is_choice_rule(rule_ast):
     return (
         rule_ast.ast_type == ASTType.Rule
@@ -170,6 +163,10 @@ def is_choice_rule(rule_ast):
 
 def is_disyunctive_head(rule_ast):
     return rule_ast.head.ast_type == ASTType.Disjunction
+
+
+def is_theory_head(rule_ast):
+    return rule_ast.head.ast_type == ASTType.TheoryAtom
 
 
 ######### Shortcuts for creating ASTs #########
