@@ -42,8 +42,8 @@ follow(P,V) :- obl(P,V), h(P,V).
 %!trace {viol(P,V),"violation of obligation: %=%",P,V} :- viol(P,V).
 %!trace {perm(P,V),"permission: %=%",P,V} :- perm(P,V).
 
-%!show_trace {viol(P,V)} :- viol(P,V).
-%!show_trace {h(P,V)} :- h(P,V).
-%!show_trace {obl(P,V)} :- obl(P,V).
-%!show_trace {perm(P,V)} :- perm(P,V).
+%!show_trace {viol(P,V)}.
+%!show_trace {h(P,V)}.
+%!show_trace {obl(P,V)}.
+%!show_trace {perm(P,V)}.
 

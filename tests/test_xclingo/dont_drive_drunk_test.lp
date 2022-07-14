@@ -19,7 +19,7 @@ sentence(P, prison) :- punish(P).
 %!trace_rule {"% is innocent by default",P}.
 sentence(P, innocent) :- person(P), not punish(P).
 
-%!trace {alcohol(P,A), "% alcohol's level is %",P,A} :- alcohol(P,A).
+%!trace {alcohol(P,A), "% alcohol's level is %",P,A}.
 %!trace {alcohol(P,A), "% was drunk",P} :- alcohol(P,A).
 
 %!show_trace {sentence(P,S)} :- sentence(P,S).
