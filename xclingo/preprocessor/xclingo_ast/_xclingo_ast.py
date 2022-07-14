@@ -24,6 +24,7 @@ from ._ast_shortcuts import (
 
 _SHOW_TRACE_HEAD = "_xclingo_show_trace"
 _MUTE_HEAD = "_xclingo_muted"
+_MUTE_RULE_HEAD = "_xclingo_muted_body"
 _TRACE_HEAD = "_xclingo_label"
 
 _MODEL_WRAPPER = "_xclingo_model"
@@ -191,8 +192,6 @@ class MarkAnnotation(AutoSafeTheory, ModelBody, XclingoRule):
     def __init__(self, wrapper: str, **kwargs):
         self._wrapper = wrapper
         super().__init__(
-            rule_id=None,
-            disjunction_id=None,
             **kwargs,
         )
 
@@ -208,6 +207,17 @@ class ShowTraceAnnotationRule(MarkAnnotation):
 class MuteAnnotationRule(MarkAnnotation):
     def __init__(self, **kwargs):
         super().__init__(wrapper=_MUTE_HEAD, **kwargs)
+
+
+####### MarkRule
+
+
+class MuteRuleAnnotation(DoNothingBody, XclingoRule):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def translate_head(self, rule_id: int, disjunction_id: int, head: AST, body: Sequence[AST]):
+        return literal(_MUTE_RULE_HEAD, [rule_id], sign=Sign.NoSign)
 
 
 ####### Traces
@@ -237,7 +247,6 @@ class TraceRuleAnnotationRule(TraceAnnotation, FLit, XclingoRule):
             label=trace_head.elements[0].terms[0],
             vars=trace_head.elements[0].terms[1:],
             disjunction_id=Variable(loc, "DisID"),
-            location=None,
             head=Variable(loc, "Head"),
             **kwargs,
         )
@@ -252,8 +261,6 @@ class TraceAnnotationRule(TraceAnnotation, AutoSafeTheory, ModelBody, XclingoRul
             labelled=head.elements[0].terms[0],
             label=head.elements[0].terms[1],
             vars=head.elements[0].terms[2:],
-            rule_id=None,
-            disjunction_id=None,
             head=head,
             **kwargs,
         )

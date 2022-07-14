@@ -5,8 +5,9 @@ _xclingo_graph(complete_explanation).
 _xclingo_node(ToExplainAtom, complete_explanation) :- _xclingo_show_trace(ToExplainAtom), not _xclingo_muted(ToExplainAtom).
 _xclingo_edge((Caused, Cause), complete_explanation) :-
     _xclingo_node(Caused, complete_explanation),
-    _xclingo_direct_cause(Caused, Cause),
-    not _xclingo_muted(Cause).
+    _xclingo_direct_cause(RuleID, Caused, Cause),
+    not _xclingo_muted(Cause),
+    not _xclingo_muted_body(RuleID).
 _xclingo_node(Atom, complete_explanation) :- _xclingo_edge((_, Atom), complete_explanation).
 
 % Compressing graph (only labelled; and show_trace Atoms even if they are not labelled)

@@ -8,14 +8,22 @@ from .xclingo_ast import (
     is_choice_rule,
     is_constraint,
     is_disyunctive_head,
-    xclingo_annotation,
+    is_theory_head,
 )
 
 from ._translator import (
     SupportTranslator,
     AnnotationTranslator,
     RelaxedConstraintTranslator,
+    AnnotationNames,
 )
+
+
+def xclingo_annotation(rule_ast):
+    if rule_ast.ast_type == ASTType.Rule and rule_ast.head.ast_type == ASTType.TheoryAtom:
+        if rule_ast.head.term.name in AnnotationNames.all():
+            return rule_ast.head.term.name
+    return None
 
 
 class Preprocessor:
@@ -176,7 +184,9 @@ class XClingoPreprocessor(Preprocessor):
 
     def translate_annotation(self, annotation_name: str, rule_ast: AST):
         for translated_annotation in self._annotation_translator.translate(
-            annotation_name, rule_ast
+            annotation_name,
+            rule_ast,
+            self._rule_count,
         ):
             yield translated_annotation
 
@@ -217,11 +227,16 @@ class XClingoPreprocessor(Preprocessor):
                     self._last_trace_rule = rule_ast
                 else:
                     for translated_annotation in self.translate_annotation(
-                        annotation_name, rule_ast
+                        annotation_name,
+                        rule_ast,
                     ):
                         yield translated_annotation
             else:
                 rule_id = self._increment_rule_count()
+
+                if is_theory_head(rule_ast):  # Is not an xclingo theory atom
+                    yield rule_ast
+                    return
 
                 if is_choice_rule(rule_ast):
                     for cond_lit in rule_ast.head.elements:
