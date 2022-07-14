@@ -113,6 +113,18 @@ def collect_free_vars(lit_list: Sequence[AST]):
             if lit.atom.right.ast_type == ASTType.Variable:
                 seen_vars.add(str(lit.atom.right.name))
 
+        if lit.atom.ast_type == ASTType.BodyAggregate:
+            if (
+                lit.atom.left_guard is not None
+                and lit.atom.left_guard.term.ast_type == ASTType.Variable
+            ):
+                seen_vars.add(str(lit.atom.left_guard.term.name))
+            if (
+                lit.atom.right_guard is not None
+                and lit.atom.right_guard.term.ast_type == ASTType.Variable
+            ):
+                seen_vars.add(str(lit.atom.right_guard.term.name))
+
         # Skip negative literals
         elif lit.sign != Sign.NoSign:
             continue
@@ -190,21 +202,8 @@ def literal(func_name: str, args: Sequence, sign: Sign = Sign.NoSign):
     )
 
 
-def xclingo_dependency_head_literal(
-    location: Location, function_name: str, effect: AST, causes: Sequence[AST]
-):
-    return Literal(
-        loc,
-        Sign.NoSign,
-        SymbolicAtom(
-            Function(
-                loc,
-                function_name,
-                [effect, Pool(loc, causes)],
-                False,
-            )
-        ),
-    )
+def xclingo_dependency_head_literal(function_name: str, refernce_lit: AST, causes: Sequence[AST]):
+    return literal(func_name=function_name, args=[refernce_lit, Pool(loc, causes)])
 
 
 def xclingo_body_aggregate_literal(

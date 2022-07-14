@@ -21,19 +21,14 @@ from ._ast_shortcuts import (
 
 ########### Constants ###########
 
-_MODEL_WRAPPER = "_xclingo_model"
-_F_ATOM_WRAPPER = "_xclingo_f_atom"
-
-
 _SHOW_TRACE_HEAD = "_xclingo_show_trace"
 _MUTE_HEAD = "_xclingo_muted"
 _TRACE_HEAD = "_xclingo_label"
 
+_MODEL_WRAPPER = "_xclingo_model"
 _SUP_HEAD = "_xclingo_sup"
 _DEPENDS_HEAD = "_xclingo_depends"
-_FBODY_HEAD = "_xclingo_fbody"
 _F_HEAD = "_xclingo_f"
-_DIRECT_CAUSE_HEAD = "_xclingo_direct_cause"
 _XCLINGO_CONSTRAINT_HEAD = "_xclingo_violated_constraint"
 
 
@@ -92,11 +87,6 @@ class SupLit(ReferenceLit):
         super().__init__(func_name=_SUP_HEAD, **kwargs)
 
 
-class FbodyLit(ReferenceLit):
-    def __init__(self, **kwargs):
-        super().__init__(func_name=_FBODY_HEAD, **kwargs)
-
-
 class FLit(ReferenceLit):
     def __init__(self, **kwargs):
         super().__init__(func_name=_F_HEAD, **kwargs)
@@ -137,43 +127,10 @@ class ModelBody:
                 yield lit
 
 
-class FiredBody:
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-    def translate_body(self, body: Sequence[AST]):
-        for lit in body:
-            if lit.ast_type == ASTType.Literal:
-                if lit.atom.ast_type == ASTType.SymbolicAtom:
-                    if lit.sign == Sign.NoSign:
-                        yield literal(_F_ATOM_WRAPPER, [lit], sign=lit.sign)
-                    else:
-                        yield literal(_MODEL_WRAPPER, [lit], sign=lit.sign)
-
-                elif lit.atom.ast_type == ASTType.BodyAggregate:
-                    yield xclingo_body_aggregate_literal(self.translate_body, lit)
-
-                else:
-                    yield lit
-
-            elif lit.ast_type == ASTType.ConditionalLiteral:
-                yield xclingo_conditional_literal(_F_ATOM_WRAPPER, self.translate_body, lit)
-            else:
-                yield lit
-
-
 ####### Rules
 
 
 class SupportRule(ModelBody, SupLit, XclingoRule):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-    def translate_head(self, rule_id: int, disjunction_id: int, head: AST, body: Sequence[AST]):
-        return self._reference_lit
-
-
-class FBodyRule(FiredBody, FbodyLit, XclingoRule):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -191,41 +148,19 @@ class RelaxedConstraint(DoNothingBody, XclingoRule):
         )
 
 
-####### Depends
-
-
-class Depends:
+class DependsRule(ModelBody, SupLit, XclingoRule):
     def __init__(self, extra_body: Sequence[AST], causes: Sequence[AST], **kwargs):
         self._extra_body = extra_body
         self._causes = causes
         super().__init__(**kwargs)
 
+    def translate_head(self, rule_id: int, disjunction_id: int, head: AST, body: Sequence[AST]):
+        return xclingo_dependency_head_literal(_DEPENDS_HEAD, self._reference_lit, self._causes)
+
     def translate_body(self, body: Sequence[AST]):
         for lit in super().translate_body(self._extra_body):
             yield lit
         yield self._reference_lit
-
-
-class DependsRule(Depends, ModelBody, SupLit, XclingoRule):
-    def __init__(
-        self,
-        **kwargs,
-    ):
-        super().__init__(**kwargs)
-
-    def translate_head(self, rule_id: int, disjunction_id: int, head: AST, body: Sequence[AST]):
-        return xclingo_dependency_head_literal(None, _DEPENDS_HEAD, head, self._causes)
-
-
-class DirectCauseRule(Depends, FiredBody, FLit, XclingoRule):
-    def __init__(
-        self,
-        **kwargs,
-    ):
-        super().__init__(**kwargs)
-
-    def translate_head(self, rule_id: int, disjunction_id: int, head: AST, body: Sequence[AST]):
-        return xclingo_dependency_head_literal(None, _DIRECT_CAUSE_HEAD, head, self._causes)
 
 
 ####### Traces
@@ -261,7 +196,7 @@ class TraceAnnotationRule(TraceAnnotation, ModelBody, XclingoRule):
         )
 
 
-class TraceRuleAnnotationRule(TraceAnnotation, FiredBody, FLit, XclingoRule):
+class TraceRuleAnnotationRule(TraceAnnotation, FLit, XclingoRule):
     def __init__(self, trace_head: AST, **kwargs):
         super().__init__(
             labelled=Variable(loc, "Head"),

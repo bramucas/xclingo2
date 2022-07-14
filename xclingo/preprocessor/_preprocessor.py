@@ -13,7 +13,6 @@ from .xclingo_ast import (
 
 from ._translator import (
     SupportTranslator,
-    FTranslator,
     AnnotationTranslator,
     RelaxedConstraintTranslator,
 )
@@ -162,7 +161,6 @@ class XClingoPreprocessor(Preprocessor):
         self._rule_count = 1
         self._last_trace_rule = None
         self._annotation_translator = AnnotationTranslator()
-        self._fired_translator = FTranslator()
         self._support_translator = SupportTranslator()
 
     def reset(self):
@@ -189,11 +187,10 @@ class XClingoPreprocessor(Preprocessor):
         original_head: AST,
         original_body: Sequence[AST],
     ):
-        for translator in (self._support_translator, self._fired_translator):
-            for translated_rule in translator.translate(
-                rule_id, disjunction_id, original_head, original_body, self._last_trace_rule
-            ):
-                yield translated_rule
+        for translated_rule in self._support_translator.translate(
+            rule_id, disjunction_id, original_head, original_body, self._last_trace_rule
+        ):
+            yield translated_rule
 
     def preprocess_rule(self, rule_ast: ASTType.Rule):
         """Translates a given rule into its xclingo translation and adds it to the translation.
