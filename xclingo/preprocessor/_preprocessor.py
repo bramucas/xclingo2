@@ -189,7 +189,8 @@ class XClingoPreprocessor(Preprocessor):
         original_head: AST,
         original_body: Sequence[AST],
     ):
-        for translator in (self._support_translator, self._fired_translator):
+        # for translator in (self._support_translator, self._fired_translator):
+        for translator in [self._support_translator]:
             for translated_rule in translator.translate(
                 rule_id, disjunction_id, original_head, original_body, self._last_trace_rule
             ):

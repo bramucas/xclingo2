@@ -214,7 +214,7 @@ class DependsRule(Depends, ModelBody, SupLit, XclingoRule):
         super().__init__(**kwargs)
 
     def translate_head(self, rule_id: int, disjunction_id: int, head: AST, body: Sequence[AST]):
-        return xclingo_dependency_head_literal(None, _DEPENDS_HEAD, head, self._causes)
+        return xclingo_dependency_head_literal(_DEPENDS_HEAD, self._reference_lit, self._causes)
 
 
 class DirectCauseRule(Depends, FiredBody, FLit, XclingoRule):

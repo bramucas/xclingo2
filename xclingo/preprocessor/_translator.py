@@ -119,7 +119,7 @@ class RuleTranslator:
 
 class SupportTranslator(RuleTranslator):
     def __init__(self) -> None:
-        super().__init__(SupportRule, DependsRule, None)
+        super().__init__(SupportRule, DependsRule, TraceRuleAnnotationRule)
 
 
 class FTranslator(RuleTranslator):
