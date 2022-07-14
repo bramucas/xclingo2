@@ -5,8 +5,6 @@ from ._xclingo_ast import (
     MuteAnnotationRule,
     SupportRule,
     DependsRule,
-    FBodyRule,
-    DirectCauseRule,
     TraceRuleAnnotationRule,
     RelaxedConstraint,
 )

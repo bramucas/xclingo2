@@ -7,8 +7,6 @@ from .xclingo_ast import (
     MuteAnnotationRule,
     SupportRule,
     DependsRule,
-    FBodyRule,
-    DirectCauseRule,
     TraceRuleAnnotationRule,
     RelaxedConstraint,
 )
@@ -120,8 +118,3 @@ class RuleTranslator:
 class SupportTranslator(RuleTranslator):
     def __init__(self) -> None:
         super().__init__(SupportRule, DependsRule, TraceRuleAnnotationRule)
-
-
-class FTranslator(RuleTranslator):
-    def __init__(self) -> None:
-        super().__init__(FBodyRule, DirectCauseRule, TraceRuleAnnotationRule)
