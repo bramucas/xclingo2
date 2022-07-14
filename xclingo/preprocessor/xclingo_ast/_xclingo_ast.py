@@ -1,4 +1,5 @@
 from typing import Sequence, Union
+from clingo import TheoryTerm
 from clingo.ast import (
     AST,
     Location,
@@ -163,6 +164,52 @@ class DependsRule(ModelBody, SupLit, XclingoRule):
         yield self._reference_lit
 
 
+####### Annotations that mark atoms
+class AutoSafeTheory:
+    def __init__(self, head: AST, body: Sequence[AST], **kwargs):
+        # We need the name and the arguments of the symbol to be able to create the annotation
+        term = head.elements[0].terms[0]
+        if term.ast_type == ASTType.SymbolicTerm:
+            name, args = term.symbol.name, term.symbol.arguments
+        elif term.ast_type == ASTType.TheoryUnparsedTerm:  # strong negation
+            args = term.elements[0].term.arguments
+            if len(term.elements[0].operators) == 1 and term.elements[0].operators[0] == "-":
+                name = "-" + term.elements[0].term.name
+            else:
+                name = term.elements[0].term.name
+        else:
+            name, args = term.name, term.arguments
+
+        super().__init__(
+            head=head,
+            body=[literal(name, args)] + list(body),
+            **kwargs,
+        )
+
+
+class MarkAnnotation(AutoSafeTheory, ModelBody, XclingoRule):
+    def __init__(self, wrapper: str, **kwargs):
+        self._wrapper = wrapper
+        super().__init__(
+            rule_id=None,
+            disjunction_id=None,
+            **kwargs,
+        )
+
+    def translate_head(self, rule_id: int, disjunction_id: int, head: AST, body: Sequence[AST]):
+        return literal(self._wrapper, [head.elements[0].terms[0]], sign=Sign.NoSign)
+
+
+class ShowTraceAnnotationRule(MarkAnnotation):
+    def __init__(self, **kwargs):
+        super().__init__(wrapper=_SHOW_TRACE_HEAD, **kwargs)
+
+
+class MuteAnnotationRule(MarkAnnotation):
+    def __init__(self, **kwargs):
+        super().__init__(wrapper=_MUTE_HEAD, **kwargs)
+
+
 ####### Traces
 
 
@@ -183,19 +230,6 @@ class TraceAnnotation:
         return literal(_TRACE_HEAD, [self.labelled, external_function], sign=Sign.NoSign)
 
 
-class TraceAnnotationRule(TraceAnnotation, ModelBody, XclingoRule):
-    def __init__(self, head: AST, **kwargs):
-        super().__init__(
-            labelled=head.elements[0].terms[0],
-            label=head.elements[0].terms[1],
-            vars=head.elements[0].terms[2:],
-            rule_id=None,
-            disjunction_id=None,
-            head=head,
-            **kwargs,
-        )
-
-
 class TraceRuleAnnotationRule(TraceAnnotation, FLit, XclingoRule):
     def __init__(self, trace_head: AST, **kwargs):
         super().__init__(
@@ -212,23 +246,14 @@ class TraceRuleAnnotationRule(TraceAnnotation, FLit, XclingoRule):
         yield self._reference_lit
 
 
-####### Annotations that mark atoms
-
-
-class MarkAnnotation(ModelBody, XclingoRule):
-    def __init__(self, wrapper: str, **kwargs):
-        self._wrapper = wrapper
-        super().__init__(rule_id=None, disjunction_id=None, **kwargs)
-
-    def translate_head(self, rule_id: int, disjunction_id: int, head: AST, body: Sequence[AST]):
-        return literal(self._wrapper, [head.elements[0].terms[0]], sign=Sign.NoSign)
-
-
-class ShowTraceAnnotationRule(MarkAnnotation):
-    def __init__(self, **kwargs):
-        super().__init__(wrapper=_SHOW_TRACE_HEAD, **kwargs)
-
-
-class MuteAnnotationRule(MarkAnnotation):
-    def __init__(self, **kwargs):
-        super().__init__(wrapper=_MUTE_HEAD, **kwargs)
+class TraceAnnotationRule(TraceAnnotation, AutoSafeTheory, ModelBody, XclingoRule):
+    def __init__(self, head: AST, **kwargs):
+        super().__init__(
+            labelled=head.elements[0].terms[0],
+            label=head.elements[0].terms[1],
+            vars=head.elements[0].terms[2:],
+            rule_id=None,
+            disjunction_id=None,
+            head=head,
+            **kwargs,
+        )
