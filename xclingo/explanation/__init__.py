@@ -1,1 +1,1 @@
-from ._explanation import Explanation
+from ._graph import Explanation, ExplanationGraphModel

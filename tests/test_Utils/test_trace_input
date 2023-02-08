@@ -1,5 +1,0 @@
-%!trace_rule {"% has driven drunk",P}
-punish(P) :- person(P), drive(P), alcohol(P,A), A>30.
-
-%!trace_rule {"p"}
-p.
