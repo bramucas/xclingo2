@@ -46,10 +46,6 @@ def _init_xclingo_control(
         xclingo_control.extend_explainer(
             "base", [], load_xclingo_extension("violated_constraints_show_trace.lp")
         )
-        if args.constraint_explaining == "minimize":
-            xclingo_control.extend_explainer(
-                "base", [], load_xclingo_extension("violated_constraints_minimize.lp")
-            )
 
     xclingo_control.add("base", [], program)
     xclingo_control.ground([("base", [])])
