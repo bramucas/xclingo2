@@ -22,10 +22,15 @@ class PreprocessorPipeline:
 
 
 class ConstraintRelaxerPipeline(PreprocessorPipeline):
+    MINIMIZE_STATEMENT = '\n#minimize{1,ID, Vars: _xclingo_violated_constraint(ID, Vars)}.'
+    
     def __init__(self):
         super().__init__()
         self.register_at_end(XClingoAnnotationPreprocessor())
         self.register_at_end(ConstraintRelaxer())
+
+    def translate(self, name: str, program: str):
+        return super().translate(name, program) + self.MINIMIZE_STATEMENT
 
 
 class DefaultExplainingPipeline(PreprocessorPipeline):
