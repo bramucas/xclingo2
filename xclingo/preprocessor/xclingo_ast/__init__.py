@@ -1,5 +1,6 @@
 # Xclingo ASTs
 from ._xclingo_ast import (
+    FedModelFact,
     ShowTraceAnnotationRule,
     TraceAnnotationRule,
     MuteAnnotationRule,

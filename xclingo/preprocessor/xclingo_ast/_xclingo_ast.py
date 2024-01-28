@@ -132,6 +132,14 @@ class ModelBody:
 ####### Rules
 
 
+class FedModelFact(DoNothingBody, XclingoRule):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def translate_head(self, rule_id: int, disjunction_id: int, head: AST, body: Sequence[AST]):
+        return literal(_MODEL_WRAPPER, [head], sign=Sign.NoSign)
+
+
 class SupportRule(ModelBody, SupLit, XclingoRule):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

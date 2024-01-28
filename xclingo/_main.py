@@ -112,3 +112,24 @@ class XclingoControl(Control):
             output += f"##Total Explanations:\t{nexpl}\n"
         output += f"Models:\t{nanswer}\n"
         return output
+
+
+class XclingoControlModelExplainer(XclingoControl):
+    def add(self, name: str, parameters: Sequence[str], program: str) -> None:
+        raise RuntimeError(
+            "This method is not intended to be invoked from this class. Use add_model ad add_to_explainer instead"
+        )
+
+    def add_model(self, name: str, parameters: Sequence[str], program: str) -> None:
+        try:
+            super().add(name, parameters, program)
+        except RuntimeError as e:
+            raise ModelControlParsingError(e)
+
+    def add_to_explainer(self, name: str, parameters: Sequence[str], program: str) -> None:
+        try:
+            self.explainer.add(
+                name, parameters, self.pre_explaining_pipeline.translate(name, program)
+            )
+        except RuntimeError as e:
+            raise ExplanationControlParsingError(e)

@@ -85,7 +85,8 @@ def check_options():
         type=int,
         help="Number of answer sets and number of desired explanations.",
     )
+    parser.add_argument("--feed-model", type=FileType("r"), help="Archivo para alimentar el modelo")
     parser.add_argument(
-        "infiles", nargs="+", type=FileType("r"), default=sys.stdin, help="ASP program"
+        "infiles", nargs="*", type=FileType("r"), default=[sys.stdin], help="ASP program"
     )
     return parser.parse_known_args()

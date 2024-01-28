@@ -12,6 +12,7 @@ from .xclingo_ast import (
 )
 
 from ._translator import (
+    FedModelTranslator,
     SupportTranslator,
     AnnotationTranslator,
     RelaxedConstraintTranslator,
@@ -66,6 +67,19 @@ class Preprocessor:
             lambda ast: self._add_to_translation(self.preprocess_rule(ast)),
         )
         return self._translation
+
+
+class FedModelPreprocessor(Preprocessor):
+    def __init__(self) -> None:
+        super().__init__()
+        self._fed_model_translator = FedModelTranslator()
+
+    def preprocess_rule(self, rule_ast: AST) -> Sequence[AST]:
+        if rule_ast.ast_type != ASTType.Rule:
+            yield rule_ast  # Things that are not rules are just passed
+        else:
+            for model_fact in self._fed_model_translator.translate(rule_ast):
+                yield model_fact
 
 
 class XClingoAnnotationPreprocessor(Preprocessor):
@@ -240,7 +254,6 @@ class XClingoPreprocessor(Preprocessor):
 
                 if is_choice_rule(rule_ast):
                     for cond_lit in rule_ast.head.elements:
-
                         for r in self.translate_rule(
                             rule_id,
                             0,

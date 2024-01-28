@@ -1,5 +1,6 @@
 from typing import Sequence, TextIO
 from xclingo import XclingoControl
+from ._main import XclingoControlModelExplainer
 from xclingo.preprocessor import (
     DefaultExplainingPipeline,
     ConstraintRelaxerPipeline,
@@ -8,6 +9,8 @@ from xclingo.preprocessor import (
 from xclingo.extensions import load_xclingo_extension
 from xclingo.error import ModelControlGroundingError, ModelControlParsingError
 from xclingo.explainer.error import ExplanationControlParsingError, ExplanationControlGroundingError
+from xclingo.explainer import Explainer
+from xclingo.preprocessor._preprocessor import FedModelPreprocessor
 from ._utils import print_header, print_version
 from ._arguments_handler import check_options
 
@@ -149,7 +152,6 @@ def into_pickle(args, xclingo_control: XclingoControl, save_on_unsat=False):
 
 
 def ground_solve_explain(args, unknown_args, programs):
-
     xclingo_control = _init_xclingo_control(args, unknown_args, programs)
     if args.picklefile:  # default value: ""
         unsat = into_pickle(args, xclingo_control, save_on_unsat=False)
@@ -170,6 +172,33 @@ def ground_solve_explain(args, unknown_args, programs):
             solve_explain(args, xclingo_control)
 
 
+def explain_fed_model(args, unknown_args, program):
+    xclingo_control = XclingoControlModelExplainer(
+        [str(args.n[0])] + unknown_args,
+        n_explanations=str(args.n[1]),
+    )
+
+    if args.auto_tracing != "none":
+        xclingo_control.extend_explainer(
+            "base", [], load_xclingo_extension(f"autotrace_{args.auto_tracing}.lp")
+        )
+
+    if args.output == "render-graphs":
+        xclingo_control.extend_explainer("base", [], load_xclingo_extension("graph_locals.lp"))
+        xclingo_control.extend_explainer("base", [], load_xclingo_extension("graph_styles.lp"))
+
+    xclingo_control.add_model("base", [], args.feed_model.read())
+    xclingo_control.ground([("base", [])])
+    xclingo_control.add_to_explainer("base", [], program)
+
+    if args.picklefile:  # default value: ""
+        into_pickle(args, xclingo_control, save_on_unsat=False)
+    elif args.output == "render-graphs":
+        render_graphs(args, xclingo_control)
+    else:
+        solve_explain(args, xclingo_control)
+
+
 def main():
     """Main function. Checks command line arguments and acts in consequence."""
     args, unknown_args = check_options()
@@ -186,6 +215,11 @@ def main():
 
     print_header(args)
     programs = read_files(args.infiles)
+
+    # Explains fed model
+    if args.feed_model:
+        explain_fed_model(args, unknown_args, programs)
+        return 0
 
     try:
         ground_solve_explain(args, unknown_args, programs)

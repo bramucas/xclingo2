@@ -2,6 +2,7 @@ from clingo.ast import AST, Location, Position
 from typing import Sequence
 
 from .xclingo_ast import (
+    FedModelFact,
     ShowTraceAnnotationRule,
     TraceAnnotationRule,
     MuteAnnotationRule,
@@ -23,6 +24,20 @@ loc = Location(
     Position("", 0, 0),
     Position("", 0, 0),
 )
+
+
+class FedModelTranslator:
+    def __init__(self) -> None:
+        pass
+
+    def translate(self, rule_ast: AST):
+        yield FedModelFact(
+            rule_id=None,
+            disjunction_id=None,
+            location=loc,
+            head=rule_ast.head,
+            body=rule_ast.body,
+        ).get_ast()
 
 
 class RelaxedConstraintTranslator:
