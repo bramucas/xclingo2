@@ -86,6 +86,12 @@ def check_options():
         help="Number of answer sets and number of desired explanations.",
     )
     parser.add_argument(
+        "--extension",
+        nargs="*",
+        type=FileType("r"),
+        help="Logic program extensions for the explainer program.",
+    )
+    parser.add_argument(
         "infiles", nargs="+", type=FileType("r"), default=sys.stdin, help="ASP program"
     )
     return parser.parse_known_args()
