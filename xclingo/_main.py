@@ -117,7 +117,7 @@ class XclingoControl(Control):
 class XclingoControlModelExplainer(XclingoControl):
     def add(self, name: str, parameters: Sequence[str], program: str) -> None:
         raise RuntimeError(
-            "This method is not intended to be invoked from this class. Use add_model ad add_to_explainer instead"
+            "This method is not intended to be invoked from this class. Use add_model or add_to_explainer instead"
         )
 
     def add_model(self, name: str, parameters: Sequence[str], program: str) -> None:
