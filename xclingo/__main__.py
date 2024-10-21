@@ -45,6 +45,10 @@ def _init_xclingo_control(
         xclingo_control.extend_explainer("base", [], load_xclingo_extension("graph_locals.lp"))
         xclingo_control.extend_explainer("base", [], load_xclingo_extension("graph_styles.lp"))
 
+    if args.extension:
+        for extension in args.extension:
+            xclingo_control.extend_explainer("base", [], extension.read())
+
     if constraints:
         xclingo_control.extend_explainer(
             "base", [], load_xclingo_extension("violated_constraints_show_trace.lp")

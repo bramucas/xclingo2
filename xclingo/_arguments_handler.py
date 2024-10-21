@@ -85,6 +85,12 @@ def check_options():
         type=int,
         help="Number of answer sets and number of desired explanations.",
     )
+    parser.add_argument(
+        "--extension",
+        nargs="*",
+        type=FileType("r"),
+        help="Logic program extensions for the explainer program.",
+    )
     parser.add_argument("--feed-model", type=FileType("r"), help="Archivo para alimentar el modelo")
     parser.add_argument(
         "infiles", nargs="*", type=FileType("r"), default=[sys.stdin], help="ASP program"
