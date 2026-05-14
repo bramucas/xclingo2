@@ -1,0 +1,56 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+
+[project]
+name = "xclingo"
+dynamic = ["version"]
+
+description = "Tool for explaining Answer Set Programs."
+readme = "README.md"
+requires-python = ">=3.8"
+
+license = { text = "MIT" }
+
+authors = [
+    { name = "Brais Muñiz", email = "mc.brais@gmail.com" }
+]
+
+keywords = [
+    "logic programming",
+    "answer set programming",
+]
+
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+dependencies = [
+    "clingo==5.8",
+    "clingraph",
+]
+
+
+[project.urls]
+Homepage = "https://github.com/bramucas/xclingo2"
+
+
+[project.scripts]
+xclingo = "xclingo.__main__:main"
+
+
+[tool.hatch.version]
+path = "xclingo/_version.py"
+
+
+[tool.hatch.build]
+include = [
+    "xclingo/**/*.lp",
+]
+
+
+[tool.hatch.build.targets.wheel]
+packages = ["xclingo"]
