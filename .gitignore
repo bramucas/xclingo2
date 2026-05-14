@@ -131,6 +131,6 @@ dmypy.json
 Makefile
 .vscode/
 
-update_tests.sh
+scripts/local
 # default out directory for graph renders
 out/ 
