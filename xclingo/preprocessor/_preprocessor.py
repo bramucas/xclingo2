@@ -1,4 +1,4 @@
-from typing import Sequence
+from typing import Iterator, Sequence
 from clingo.ast import (
     AST,
     ASTType,
@@ -21,7 +21,10 @@ from ._translator import (
 
 
 def xclingo_annotation(rule_ast):
-    if rule_ast.ast_type == ASTType.Rule and rule_ast.head.ast_type == ASTType.TheoryAtom:
+    if (
+        rule_ast.ast_type == ASTType.Rule
+        and rule_ast.head.ast_type == ASTType.TheoryAtom
+    ):
         if rule_ast.head.term.name in AnnotationNames.all():
             return rule_ast.head.term.name
     return None
@@ -74,7 +77,7 @@ class FedModelPreprocessor(Preprocessor):
         super().__init__()
         self._fed_model_translator = FedModelTranslator()
 
-    def preprocess_rule(self, rule_ast: AST) -> Sequence[AST]:
+    def preprocess_rule(self, rule_ast: AST) -> Iterator[AST]:
         if rule_ast.ast_type != ASTType.Rule:
             yield rule_ast  # Things that are not rules are just passed
         else:
@@ -83,13 +86,8 @@ class FedModelPreprocessor(Preprocessor):
 
 
 class XClingoAnnotationPreprocessor(Preprocessor):
-    def __init__(self) -> None:
-        super().__init__()
 
-    def reset(self) -> None:
-        super().reset()
-
-    def preprocess_rule(self, rule_ast: AST) -> None:
+    def preprocess_rule(self, rule_ast: AST) -> Iterator[AST]:
         yield rule_ast
 
     def process_program(self, program: str):
@@ -144,7 +142,9 @@ class ConstraintRelaxer(Preprocessor):
             if annotation_name is None:  # Rules
                 rule_id = self._increment_constraint_count()
                 if is_constraint(rule_ast) and self.there_is_a_label is True:
-                    for translated_constraint in self._relaxed_constraint_translator.translate(
+                    for (
+                        translated_constraint
+                    ) in self._relaxed_constraint_translator.translate(
                         rule_id, rule_ast
                     ):
                         yield translated_constraint
@@ -228,8 +228,7 @@ class XClingoPreprocessor(Preprocessor):
         # Ignore #shows
         if rule_ast.ast_type == ASTType.ShowSignature:
             return
-        # TODO: what to do with externals?
-        # TODO: which other things
+
         self._add_comment_to_translation(rule_ast)
         if rule_ast.ast_type != ASTType.Rule:
             yield rule_ast  # Things that are not rules are just passed
@@ -274,7 +273,9 @@ class XClingoPreprocessor(Preprocessor):
                             yield r
                         disjunction_id += 1
                 elif not is_constraint(rule_ast):
-                    for r in self.translate_rule(rule_id, 0, rule_ast.head, rule_ast.body):
+                    for r in self.translate_rule(
+                        rule_id, 0, rule_ast.head, rule_ast.body
+                    ):
                         yield r
 
                 self._last_trace_rule = None
