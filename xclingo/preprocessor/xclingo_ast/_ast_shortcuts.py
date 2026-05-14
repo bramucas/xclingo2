@@ -21,7 +21,6 @@ from clingo.ast import (
 )
 from clingo import Number, String
 
-
 loc = Location(
     Position("", 0, 0),
     Position("", 0, 0),
@@ -120,10 +119,11 @@ def collect_free_vars(lit_list: Sequence[AST]):
 
         # handle comparisons
         if lit.atom.ast_type == ASTType.Comparison:
-            if lit.atom.left.ast_type == ASTType.Variable:
-                seen_vars.add(str(lit.atom.left.name))
-            if lit.atom.right.ast_type == ASTType.Variable:
-                seen_vars.add(str(lit.atom.right.name))
+            if lit.atom.term.ast_type == ASTType.Variable:
+                seen_vars.add(str(lit.atom.term.name))
+            for guard in lit.atom.guards:
+                if guard.term.ast_type == ASTType.Variable:
+                    seen_vars.add(str(guard.term.name))
 
         if lit.atom.ast_type == ASTType.BodyAggregate:
             if (
@@ -200,7 +200,9 @@ def handle_type(element: Union[AST, str, int, Sequence]):
 
 
 def wrap_symbols(wrapper_name: str, symbols: Sequence):
-    return SymbolicAtom(Function(loc, wrapper_name, [handle_type(item) for item in symbols], False))
+    return SymbolicAtom(
+        Function(loc, wrapper_name, [handle_type(item) for item in symbols], False)
+    )
 
 
 def literal(func_name: str, args: Sequence, sign: Sign = Sign.NoSign):
@@ -211,7 +213,9 @@ def literal(func_name: str, args: Sequence, sign: Sign = Sign.NoSign):
     )
 
 
-def xclingo_dependency_head_literal(function_name: str, refernce_lit: AST, causes: Sequence[AST]):
+def xclingo_dependency_head_literal(
+    function_name: str, refernce_lit: AST, causes: Sequence[AST]
+):
     return literal(func_name=function_name, args=[refernce_lit, Pool(loc, causes)])
 
 
@@ -245,7 +249,9 @@ def xclingo_conditional_literal(
     return ConditionalLiteral(
         loc,
         literal=literal(
-            lit_wrapper, [conditional_literal.literal], sign=conditional_literal.literal.sign
+            lit_wrapper,
+            [conditional_literal.literal],
+            sign=conditional_literal.literal.sign,
         ),
         condition=list(transformer_function(conditional_literal.condition)),
     )
