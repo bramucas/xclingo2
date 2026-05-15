@@ -12,7 +12,10 @@ from xclingo.preprocessor import DefaultExplainingPipeline
 from xclingo.explainer._logger import XclingoLogger
 
 from xclingo.error import ModelControlGroundingError, ModelControlParsingError
-from xclingo.explainer.error import ExplanationControlGroundingError, ExplanationControlParsingError
+from xclingo.explainer.error import (
+    ExplanationControlGroundingError,
+    ExplanationControlParsingError,
+)
 
 
 class XClingoModel(Model):
@@ -20,8 +23,10 @@ class XClingoModel(Model):
         super().__init__(original_model._rep)
         self._explainer = explainer
 
-    def explain_model(self) -> Sequence[ExplanationGraphModel]:
-        return self._explainer._compute_graphs(self, context=XClingoContext())
+    def explain_model(
+        self, controlContext=XClingoContext()
+    ) -> Sequence[ExplanationGraphModel]:
+        return self._explainer._compute_graphs(self, context=controlContext)
 
 
 class XclingoControl(Control):
@@ -37,7 +42,9 @@ class XclingoControl(Control):
         explaining_preprocessor_pipeline: PreprocessorPipeline = None,
     ):
         # Solver control
-        super().__init__(arguments=arguments, logger=logger, message_limit=message_limit)
+        super().__init__(
+            arguments=arguments, logger=logger, message_limit=message_limit
+        )
         self.pre_solving_pipeline = (
             PreprocessorPipeline()
             if solving_preprocessor_pipeline is None
@@ -55,7 +62,9 @@ class XclingoControl(Control):
         for i, a in enumerate(arguments):
             if a in ("-c", "--const"):
                 constants.extend(arguments[i : i + 2])
-        self.explainer = Explainer([n_explanations] + constants, logger=self.expl_logger.logger)
+        self.explainer = Explainer(
+            [n_explanations] + constants, logger=self.expl_logger.logger
+        )
 
     def add(self, name: str, parameters: Sequence[str], program: str) -> None:
         """It adds a program to the control.
@@ -64,7 +73,9 @@ class XclingoControl(Control):
             program (str): a logic program in ASP format.
         """
         try:
-            super().add(name, parameters, self.pre_solving_pipeline.translate(name, program))
+            super().add(
+                name, parameters, self.pre_solving_pipeline.translate(name, program)
+            )
         except RuntimeError as e:
             raise ModelControlParsingError(e)
         try:
@@ -74,16 +85,22 @@ class XclingoControl(Control):
         except RuntimeError as e:
             raise ExplanationControlParsingError(e)
 
-    def ground(self, parts: Sequence[Tuple[str, Sequence[Symbol]]], context: Any = None) -> None:
+    def ground(
+        self, parts: Sequence[Tuple[str, Sequence[Symbol]]], context: Any = None
+    ) -> None:
         try:
             super().ground(parts, context)
         except RuntimeError as e:
             raise ModelControlGroundingError(e)
 
-    def extend_explainer(self, name: str, parameters: Sequence[str], program: str) -> None:
+    def extend_explainer(
+        self, name: str, parameters: Sequence[str], program: str
+    ) -> None:
         self.explainer.add(name, parameters, program)
 
-    def add_show_trace(self, atom: Symbol, conditions: Sequence[Tuple[bool, Symbol]] = []):
+    def add_show_trace(
+        self, atom: Symbol, conditions: Sequence[Tuple[bool, Symbol]] = []
+    ):
         self.explainer.add("base", [], f"_xclingo_show_trace({str(atom)}) :- .")
 
     def solve(self, on_unsat=None) -> Sequence[XClingoModel]:
@@ -126,7 +143,9 @@ class XclingoControlModelExplainer(XclingoControl):
         except RuntimeError as e:
             raise ModelControlParsingError(e)
 
-    def add_to_explainer(self, name: str, parameters: Sequence[str], program: str) -> None:
+    def add_to_explainer(
+        self, name: str, parameters: Sequence[str], program: str
+    ) -> None:
         try:
             self.explainer.add(
                 name, parameters, self.pre_explaining_pipeline.translate(name, program)
