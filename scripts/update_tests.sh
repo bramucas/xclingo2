@@ -1,4 +1,4 @@
-TEST_DIR=tests/test_xclingo
+TEST_DIR=/home/velka/projs/asp/xclingo2/proj/tests/test_xclingo
 TEST_SUFFIX=_test.lp
 RESULT_SUFFIX=_res.pickle
 
@@ -78,4 +78,8 @@ python -m xclingo -n 0 0 $TEST_DIR/single_strongneg$TEST_SUFFIX \
 
 python -m xclingo -n 0 0 $TEST_DIR/unbalanced_table$TEST_SUFFIX \
     --picklefile $TEST_DIR/unbalanced_table$RESULT_SUFFIX \
+    --auto-tracing=all
+
+python -m xclingo -n 0 0 $TEST_DIR/_unary_operator$TEST_SUFFIX \
+    --picklefile $TEST_DIR/_unary_operator$RESULT_SUFFIX \
     --auto-tracing=all
