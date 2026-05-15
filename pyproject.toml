@@ -46,11 +46,8 @@ xclingo = "xclingo.__main__:main"
 path = "src/xclingo/_version.py"
 
 
-[tool.hatch.build]
-include = [
-    "src/xclingo/**/*.lp",
-]
-
-
 [tool.hatch.build.targets.wheel]
-packages = ["src/xclingo"]
+packages = ["xclingo"]
+
+[tool.hatch.build]
+sources = ["src"]
