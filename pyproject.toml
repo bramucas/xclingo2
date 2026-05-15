@@ -47,7 +47,11 @@ path = "src/xclingo/_version.py"
 
 
 [tool.hatch.build.targets.wheel]
-packages = ["xclingo"]
+packages = ["src/xclingo"]
 
-[tool.hatch.build]
-sources = ["src"]
+[tool.hatch.build.targets.sdist]
+include = [
+  "/src",
+  "README.md",
+  "pyproject.toml"
+]
