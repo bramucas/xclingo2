@@ -97,9 +97,8 @@ def collect_free_vars(lit_list: Sequence[AST]):
                 elif arg.ast_type == ASTType.Function:
                     collected_vars = collected_vars + _collect_vars(arg.arguments)
                 elif arg.ast_type == ASTType.UnaryOperation:
-                    collected_vars = collected_vars + _collect_vars(
-                        arg.argument.arguments
-                    )
+                    if arg.argument.ast_type == ASTType.Variable:
+                        collected_vars.append(str(arg.argument.name))
             return collected_vars
 
         if _lit.ast_type == ASTType.Literal:
